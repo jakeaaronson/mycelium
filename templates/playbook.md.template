@@ -1,0 +1,40 @@
+# Playbook: {Task Name}
+
+<!-- QUALITY CHECKLIST — delete this block before committing
+  [ ] Title matches a row in CLAUDE.md's routing table
+  [ ] Under 50 lines (target: 20-40)
+  [ ] Has at least one runnable command or concrete step
+  [ ] Has a "Common Mistakes" or "Do Not" section
+  [ ] References a Level 2 doc if detailed lookup material exists
+  [ ] Every line earns its place — no tutorials, no concepts the model already knows
+  [ ] Tested: start a fresh session, give it a task, see if this playbook is sufficient
+-->
+
+## When
+
+<!-- 1-2 sentences: what task triggers loading this playbook -->
+
+## Steps
+
+<!-- Numbered steps with exact commands. The model should be able to follow these without asking questions. -->
+
+1. {step}
+2. {step}
+3. {step}
+
+## Key Commands
+
+```bash
+{the commands someone would actually run}
+```
+
+## Common Mistakes
+
+- {mistake} → {what to do instead}
+- {mistake} → {what to do instead}
+
+## Reference
+
+<!-- Point to Level 2 docs if more detail is needed -->
+
+See `docs/reference/{name}.md` for {what's in there}.

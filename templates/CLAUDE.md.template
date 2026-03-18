@@ -1,0 +1,53 @@
+# CLAUDE.md
+
+> This is the Level 0 apex. Keep it under 50 lines. Every line must earn its place.
+
+## What Is This
+
+<!-- One sentence. What does this project do? -->
+
+**{Project Name}** — {one-line description}.
+
+## Stack
+
+<!-- Only list what the model needs to know to avoid wrong assumptions -->
+
+- **Language:** {language}
+- **Framework:** {framework}
+- **Data:** {database/storage}
+- **Infra:** {deployment target}
+
+## Hard Rules
+
+<!-- 5-10 absolute constraints. Things that NEVER change. -->
+<!-- If the model violates these, bad things happen. -->
+
+1. {rule}
+2. {rule}
+
+## Build & Test (Quick)
+
+- Build: `{build command}`
+- Test: `{test command}`
+- Lint: `{lint command}`
+
+## Before You Start
+
+<!-- The routing table. This is the key innovation. -->
+<!-- Tell the model which playbook to load for which task type. -->
+
+| Task | Read First |
+|------|-----------|
+| Writing/running tests | `docs/playbooks/testing.md` |
+| Elasticsearch work | `docs/playbooks/elasticsearch.md` |
+| Deploying | `docs/playbooks/deployment.md` |
+| Creating a PR | `docs/playbooks/git-workflow.md` |
+| Debugging | `docs/playbooks/debugging.md` |
+| {task type} | `docs/playbooks/{name}.md` |
+
+## Do Not
+
+<!-- Short list of "don'ts" that aren't obvious from the code -->
+
+- {anti-pattern}
+- {anti-pattern}

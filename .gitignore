@@ -1,0 +1,13 @@
+# Generated
+proposals/
+snapshots/
+*.pyc
+__pycache__/
+
+# Personal data (sanitize before sharing)
+backup-*/
+docs/research/
+
+# Claude Code artifacts
+session-history.jsonl
+*.log

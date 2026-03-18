@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>activecomply-api — Pyramid Docs</title>
+<style>
+  :root { --bg:#0a0a0b; --s:#141416; --s2:#1c1c20; --b:#27272a; --t:#e4e4e7; --tm:#a1a1aa; --td:#71717a; --l0:#f59e0b; --l1:#3b82f6; --l2:#8b5cf6; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'SF Mono','Cascadia Code','Fira Code',monospace; background:var(--bg); color:var(--t); line-height:1.6; }
+  a { color:var(--l1); text-decoration:none; } a:hover { text-decoration:underline; }
+  .hdr { border-bottom:1px solid var(--b); padding:1.5rem 2rem; display:flex; justify-content:space-between; align-items:center; }
+  .hdr h1 { font-size:1.2rem; } .hdr .sub { color:var(--td); font-size:0.8rem; }
+  .wrap { display:flex; height:calc(100vh - 70px); }
+  .side { width:280px; min-width:280px; border-right:1px solid var(--b); overflow-y:auto; padding:1rem 0; }
+  .side::-webkit-scrollbar { width:5px; } .side::-webkit-scrollbar-thumb { background:var(--b); border-radius:3px; }
+  .lvl { padding:0.5rem 1rem 0.2rem; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; }
+  .lvl.l0 { color:var(--l0); } .lvl.l1 { color:var(--l1); } .lvl.l2 { color:var(--l2); }
+  .ni { padding:0.35rem 1rem 0.35rem 1.4rem; font-size:0.82rem; color:var(--tm); cursor:pointer; border-left:2px solid transparent; display:flex; justify-content:space-between; align-items:center; transition:all .12s; }
+  .ni:hover { background:var(--s); color:var(--t); }
+  .ni.on { background:var(--s2); color:var(--t); border-left-color:var(--l1); }
+  .ni .ln { font-size:0.68rem; color:var(--td); background:var(--s2); padding:1px 5px; border-radius:3px; }
+  .ct { flex:1; overflow-y:auto; padding:2rem 3rem; max-width:850px; }
+  .ct::-webkit-scrollbar { width:5px; } .ct::-webkit-scrollbar-thumb { background:var(--b); border-radius:3px; }
+  .ch { margin-bottom:1.2rem; padding-bottom:0.8rem; border-bottom:1px solid var(--b); }
+  .ch .bc { font-size:0.72rem; color:var(--td); margin-bottom:0.3rem; }
+  .ch h2 { font-size:1.05rem; }
+  .badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:2px 7px; border-radius:3px; margin-left:0.5rem; vertical-align:middle; }
+  .badge.l0 { background:rgba(245,158,11,.15); color:var(--l0); }
+  .badge.l1 { background:rgba(59,130,246,.15); color:var(--l1); }
+  .badge.l2 { background:rgba(139,92,246,.15); color:var(--l2); }
+  .md { font-size:0.85rem; line-height:1.7; }
+  .md h1 { font-size:1.15rem; margin:1.3rem 0 .7rem; font-weight:600; }
+  .md h2 { font-size:1rem; margin:1.1rem 0 .5rem; font-weight:600; }
+  .md h3 { font-size:.88rem; margin:.8rem 0 .4rem; font-weight:600; color:var(--tm); }
+  .md p { margin:.4rem 0; color:var(--tm); }
+  .md ul,.md ol { margin:.4rem 0; padding-left:1.4rem; color:var(--tm); }
+  .md li { margin:.2rem 0; }
+  .md strong { color:var(--t); font-weight:600; }
+  .md code { background:var(--s2); padding:2px 5px; border-radius:3px; font-size:.78rem; color:#e2b86b; }
+  .md pre { background:var(--s); border:1px solid var(--b); border-radius:6px; padding:.8rem; overflow-x:auto; margin:.6rem 0; }
+  .md pre code { background:none; padding:0; color:var(--tm); }
+  .md table { width:100%; border-collapse:collapse; margin:.6rem 0; font-size:.78rem; }
+  .md th { text-align:left; padding:.4rem .7rem; border-bottom:2px solid var(--b); color:var(--t); font-weight:600; }
+  .md td { padding:.35rem .7rem; border-bottom:1px solid var(--b); color:var(--tm); }
+  .md tr:hover td { background:var(--s); }
+  .md hr { border:none; border-top:1px solid var(--b); margin:1.2rem 0; }
+  .md blockquote { border-left:3px solid var(--b); padding-left:.8rem; color:var(--td); margin:.6rem 0; }
+  .sts { display:flex; gap:.8rem; margin:1rem 0; flex-wrap:wrap; }
+  .st { background:var(--s); border:1px solid var(--b); border-radius:6px; padding:.7rem; min-width:120px; }
+  .st .v { font-size:1.1rem; font-weight:700; } .st .l { font-size:.65rem; color:var(--td); margin-top:.15rem; }
+  @media(max-width:700px) { .wrap { flex-direction:column; height:auto; } .side { width:100%; min-width:100%; max-height:35vh; border-right:none; border-bottom:1px solid var(--b); } .ct { padding:1rem; } }
+</style>
+</head>
+<body>
+<div class="hdr"><div><h1>activecomply-api</h1></div><div class="sub">L0: 51L &middot; L1: 6 files/252L &middot; L2: 4 files/225L</div></div>
+<div class="wrap"><div class="side" id="sb"></div><div class="ct" id="ct"></div></div>
+<script>
+const DOCS={
+  "project": {
+    "name": "activecomply-api",
+    "docs": [
+      {
+        "id": "l0-claude",
+        "title": "CLAUDE.md",
+        "level": 0,
+        "path": "CLAUDE.md"
+      },
+      {
+        "id": "l1-deployment",
+        "title": "Deployment",
+        "level": 1,
+        "path": "docs/playbooks/deployment.md"
+      },
+      {
+        "id": "l1-elasticsearch",
+        "title": "Elasticsearch",
+        "level": 1,
+        "path": "docs/playbooks/elasticsearch.md"
+      },
+      {
+        "id": "l1-git-workflow",
+        "title": "Git Workflow",
+        "level": 1,
+        "path": "docs/playbooks/git-workflow.md"
+      },
+      {
+        "id": "l1-multi-repo",
+        "title": "Multi Repo",
+        "level": 1,
+        "path": "docs/playbooks/multi-repo.md"
+      },
+      {
+        "id": "l1-temporal",
+        "title": "Temporal",
+        "level": 1,
+        "path": "docs/playbooks/temporal.md"
+      },
+      {
+        "id": "l1-testing",
+        "title": "Testing",
+        "level": 1,
+        "path": "docs/playbooks/testing.md"
+      },
+      {
+        "id": "l2-code-style",
+        "title": "Code Style",
+        "level": 2,
+        "path": "docs/reference/code-style.md"
+      },
+      {
+        "id": "l2-environment-map",
+        "title": "Environment Map",
+        "level": 2,
+        "path": "docs/reference/environment-map.md"
+      },
+      {
+        "id": "l2-es-conventions",
+        "title": "Es Conventions",
+        "level": 2,
+        "path": "docs/reference/es-conventions.md"
+      },
+      {
+        "id": "l2-team-context",
+        "title": "Team Context",
+        "level": 2,
+        "path": "docs/reference/team-context.md"
+      }
+    ]
+  }
+};
+const CONTENT={
+  "l0-claude": "# CLAUDE.md\n\n**.NET 8 compliance API** \u2014 Social media monitoring, document reviews, and compliance workflows for financial services. Two solutions: `activecomply.sln` (main) and `profiles.sln` (social monitoring, GraphQL).\n\n## Hard Rules\n\n2. **Namespace separation** \u2014 `activecomply.sln` NEVER references `profiles.*` namespaces (except `activecomply.common`). `profiles.sln` may reference `activecomply.*`.\n3. **No commits unless asked** \u2014 Never run `git add` or `git commit` without explicit user request.\n4. **LF line endings** \u2014 Enforced via `.gitattributes`. All new files must use LF.\n5. **Minimal code** \u2014 Write only what's needed. No speculative features, no over-engineering.\n6. **Branch from `development`** \u2014 Never branch from `main`. Branch naming: `DEV-{ticket}-{kebab-case}`.\n\n## Build & Test\n\n```\ndotnet build activecomply.sln          # Main solution\ndotnet build profiles.sln              # Profiles solution\ndotnet test activecomply.sln           # All main tests\ndotnet test profiles.sln               # All profiles tests\ndotnet test path/to.csproj --filter \"FullyQualifiedName=NS.Class.Method\"  # Single test\n```\n\nFast rebuild: `dotnet build activecomply.sln --no-restore --verbosity quiet`\n\n## Before You Start\n\n| Task | Read First |\n|------|-----------|\n| Elasticsearch work (queries, reindex, templates) | `docs/playbooks/elasticsearch.md` |\n| Writing or running tests | `docs/playbooks/testing.md` |\n| Checking deployments or K8s | `docs/playbooks/deployment.md` |\n| Git branching, commits, or PRs | `docs/playbooks/git-workflow.md` |\n| Temporal workflows | `docs/playbooks/temporal.md` |\n| Working across multiple repos | `docs/playbooks/multi-repo.md` |\n\n## Key Constants\n\n- **Atlassian Cloud ID**: `559a76c5-7f47-4832-ab40-bd6462c90c6c`\n- **GCP Test Project**: `activecomply-app-dev`\n- **GCP Prod Project**: `activecomply-app`\n- **ES API Key Location**: `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey`\n- **ES Cached Key**: `.claude/elasticsearch-key.local.json`\n- **Base branch**: `development`\n\n## Do Not\n\n- Use CDK or Terraform (we use CloudFormation for zeitgeist, Kustomize for ActiveComply)\n- Add mocking frameworks like Moq \u2014 use xUnit patterns and test fakes\n- Use `profiles/elasticsearch/` templates (legacy) \u2014 use `elasticsearch/templates/`\n- Reference `profiles.*` namespaces from `activecomply.sln` projects\n",
+  "l1-deployment": "# Playbook: Deployment & Infrastructure\n\n## Check Latest Deployment\n\n```bash\n# Latest release\ngcloud deploy releases list \\\n  --delivery-pipeline=activecomply-api \\\n  --region=us-central1 \\\n  --project=activecomply-app-dev \\\n  --limit=1 --format=\"value(name)\"\n\n# Release details\ngcloud deploy releases describe <release-name> \\\n  --delivery-pipeline=activecomply-api \\\n  --region=us-central1 --project=activecomply-app-dev\n```\n\n## Kubernetes (VPN Required)\n\n```bash\n# Connect to test cluster\ngcloud container clusters get-credentials activecomply-dev \\\n  --zone us-central1-a --project activecomply-app-dev --internal-ip\n\n# Pods, logs, describe\nkubectl get pods -n test\nkubectl logs -n test <pod-name>\nkubectl describe pod -n test <pod-name>\n```\n\nIf kubectl fails with timeout \u2192 user needs to connect to VPN first.\n\n## Environments\n\n| Env | GCP Project | K8s Cluster | K8s Namespace |\n|-----|------------|-------------|---------------|\n| Test | `activecomply-app-dev` | `activecomply-dev` (us-central1-a) | `test` |\n| Prod | `activecomply-app` | `activecomply-prod` (us-central1-a) | default |\n| Prod workflows | `activecomply-app` | `ac` (us-central1, regional) | default |\n\n## After Merge\n\n1. Allow time for Cloud Build + deployment\n2. Check deployment timestamps to verify your code is included\n3. Monitor pod rollout: `kubectl get pods -n test -w`\n",
+  "l1-elasticsearch": "# Playbook: Elasticsearch\n\n## Credentials\n\n1. Check `.claude/elasticsearch-key.local.json` for cached base64 key\n2. If missing: read `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey` (Id + Key)\n3. Create: `echo -n \"API_KEY_ID:API_KEY\" | base64`\n4. Cache it: `{\"encoded_key\": \"BASE64_STRING\"}` in `.claude/elasticsearch-key.local.json`\n\n## Querying\n\n```bash\n# Search\ncurl -X GET \"localhost:9200/{index}/_search?size=10&pretty\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: ApiKey <BASE64_KEY>'\n\n# Count\ncurl -X GET \"localhost:9200/{index}/_count?pretty\" \\\n  -H 'Authorization: ApiKey <BASE64_KEY>'\n\n# Update by query\ncurl -X POST \"localhost:9200/{index}/_update_by_query?refresh=true&pretty\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: ApiKey <BASE64_KEY>' \\\n  -d '{\"script\":{\"source\":\"ctx._source.field = params.val\",\"lang\":\"painless\",\"params\":{\"val\":\"new\"}},\"query\":{\"term\":{\"status\":\"active\"}}}'\n```\n\nCommon indices: `monitored_profiles`, `linkedin_posts`, `social_profiles`\n\n## Reindexing\n\n1. Create temp index with `reindex_` prefix (avoids template pattern matches)\n2. `POST _reindex` source \u2192 `reindex_{name}`\n3. Delete original index\n4. `POST _reindex` `reindex_{name}` \u2192 original name\n5. Delete temp index\n\n## Templates\n\n- Location: `elasticsearch/templates/` (NOT `profiles/elasticsearch/` \u2014 that's legacy)\n- Extension: `.es` with plural index names (e.g., `accounts.es`)\n- Always set `dynamic: false`, use `keyword` for IDs, `date` for timestamps\n- Use `composed_of: [\"data_content\"]` or `[\"data_content\", \"lowercase_keyword_normalizer\"]`\n- All field names are **camelCase** (not snake_case) \u2014 matches C# JSON serialization\n\nSee `docs/reference/es-conventions.md` for full template conventions.\n",
+  "l1-git-workflow": "# Playbook: Git & PR Workflow\n\n## Branch Naming\n\n```\nDEV-{ticket_number}-{kebab-case-description}\n```\n\nExample: `DEV-623-linkedin-org-data-ingestion`\n\n## The Full Cycle\n\n1. **Create branch from `development`** (never from `main`):\n   ```bash\n   git checkout development && git pull\n   git checkout -b DEV-XXX-description\n   ```\n2. **Make changes** \u2014 build and test before committing\n3. **Commit** (only when user says \"commit\"):\n   ```bash\n   git add .  # Include ALL files unless told otherwise\n   git commit  # Conventional format: feat:/fix:/refactor:/chore:\n   ```\n4. **Push and create PR**:\n   ```bash\n   git push -u origin DEV-XXX-description\n   gh pr create --base development --title \"DEV-XXX: description\"\n   ```\n5. **Post to Jira** \u2014 User often asks \"add a comment to the Jira ticket\" after PR creation\n\n## Common Mistakes\n\n- Creating PR against `main` \u2192 Always target `development`\n- Wrong branch naming \u2192 Must start with `DEV-{number}`\n- Committing without being asked \u2192 Never auto-commit\n- Not merging `development` into feature branch before push \u2192 Check for conflicts first\n\n## CI/CD\n\nAfter push, check build status:\n```bash\ngh pr checks {PR_NUMBER}\ngh run list --limit 3\n```\n\nIf build fails: read errors, fix, push again. User will say \"see whats wrong with the build and fix it.\"\n",
+  "l1-multi-repo": "# Playbook: Multi-Repo Operations\n\n## Repository Locations\n\n| Repo | Path | Stack | Default Branch |\n|------|------|-------|---------------|\n| activecomply-api | `~/activecomply-api` | .NET 8 / C# | `development` |\n| dashboard-app | `~/dashboard-app` | React / JS / EUI | `development` |\n| survey-app | `~/survey-app` | React / Vite / Firebase | `development` |\n| dev-agents | `~/dev-agents` | Multi-project orchestration | `development` |\n\n## Cross-Repo Changes\n\nWhen a change spans backend + frontend:\n1. Make backend changes in `~/activecomply-api`\n2. Make frontend changes in `~/dashboard-app`\n3. Create separate PRs for each repo\n4. Note the dependency in both PR descriptions\n\n## Local Dev Stack\n\nFull stack requires (in order):\n1. Docker services: `cd ~/developer_bootstrap && docker compose up -d` (ES, Redis, RabbitMQ, Temporal)\n2. Backend: `GOOGLE_APPLICATION_CREDENTIALS=~/jacob_aaronson_service_account.json ASPNETCORE_ENVIRONMENT=Development dotnet run --project ~/activecomply-api/src/activecomply.api.dashboard`\n3. Frontend: `cd ~/dashboard-app && yarn start`\n\nPorts: ES 9200, Kibana 5601, RabbitMQ 15672, Redis 6379, Temporal 7233, Dashboard API 5001, Frontend 5173\n\n## SSH Key\n\nWork repos use `~/.ssh/id_work`. Clone with:\n```bash\nGIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_work\" git clone git@github.com:activecomply/{repo}.git\n```\n",
+  "l1-temporal": "# Playbook: Temporal Workflows\n\nTemporal runs in Docker. All CLI commands go through the container.\n\n## Common Commands\n\n```bash\n# List recent workflows\ndocker exec temporal temporal workflow list --limit 20\n\n# Failed workflows\ndocker exec temporal temporal workflow list --query \"ExecutionStatus='Failed'\" --limit 10\n\n# View specific workflow\ndocker exec temporal temporal workflow show -w <workflow-id>\n\n# Follow workflow history\ndocker exec temporal temporal workflow show -w <workflow-id> --follow\n\n# Worker status\ndocker exec temporal temporal task-queue describe --task-queue <queue-name>\n\n# Schedules\ndocker exec temporal temporal schedule list\ndocker exec temporal temporal schedule describe --schedule-id <id>\n\n# Health check\ndocker exec temporal temporal server health\n```\n\n## Tips\n\n- Default namespace is `default` \u2014 add `--namespace <ns>` if different\n- Add `--output json` for structured debugging output\n- Worker services live in `activecomply.workflows.host`\n",
+  "l1-testing": "# Playbook: Testing\n\n## Test Framework\n\n- xUnit with `ITestOutputHelper` for logging\n- Test fakes in `test_fakes/` folder (NOT mocking frameworks like Moq)\n- Traits: `[Trait(\"Category\", \"Unit\")]` or `[Trait(\"Category\", \"Integration\")]`\n- Helpers: `TestHelpers.cs`, `MoreAssert.cs`, `FakeEmailService`, `FakeUserStore` in `activecomply.common.tests`\n\n## Writing Integration Tests\n\n1. Seed expectation data in Elasticsearch\n2. Reference pattern: `src/activecomply.common.tests/services/AccountServiceTests.cs`\n3. Test against the **service** class (not controller)\n4. ES test client connects to `localhost:9200`\n5. Generate unique strings: `\"account-\" + TestHelpers.GenerateRandomString()`\n\n## Running Tests\n\n```bash\ndotnet test activecomply.sln                    # All tests\ndotnet test profiles.sln                        # All profiles tests\ndotnet test path/to/project.csproj              # One project\ndotnet test path/to.csproj --filter \"FullyQualifiedName=NS.Class.Method\"  # One test\n```\n\nAlways specify `.csproj` path to avoid \"multiple project\" errors.\n\n## When Controller Tests Are Needed\n\nOnly for exceptional cases. Use `WebApplicationFactory` and mock all dependencies. Keep concise.\n\n## Common Mistakes\n\n- Using Moq \u2192 Use test fakes instead\n- Testing controllers by default \u2192 Test services\n- Forgetting `[Trait(\"Category\", ...)]` \u2192 Always tag tests\n- Not seeding ES data first \u2192 Integration tests need data\n",
+  "l2-code-style": "# Reference: Code Style (C# / .NET)\n\n## Language Features\n\n- C# 10+ with nullable reference types enabled\n- File-scoped namespaces\n- `activecomply.*` prefix for all namespaces\n- String interpolation over concatenation\n- `ArgumentNullException.ThrowIfNull()` for null checks\n- ReadOnlySpan<char> for performance-sensitive string operations\n- Generic collections + LINQ for data manipulation\n\n## Conventions\n\n- **Enums**: Always decorate with `[JsonConverter(typeof(StringEnumConverter))]`\n- **DI**: New services must be registered in `Program.cs` (`services.AddTransient<IService, ServiceImpl>()`)\n- **Extensions**: Place in `activecomply.extensions` namespace\n- **Class layout**: Public methods first, private methods at bottom, grouped by functionality\n\n## Namespace Separation\n\n```\nactivecomply.sln          profiles.sln\n  \u251c\u2500\u2500 activecomply.*        \u251c\u2500\u2500 profiles.*\n  \u251c\u2500\u2500 can use common        \u251c\u2500\u2500 can use activecomply.*\n  \u2514\u2500\u2500 CANNOT use profiles.* \u2514\u2500\u2500 profiles.api uses GraphQL (NOT REST)\n```\n\nShared code goes in `activecomply.common`. If profiles-specific code is needed in activecomply, create a duplicate in the activecomply namespace.\n\n## API Routing\n\n- **No `/api/` prefix** \u2014 Controllers use `[Route(\"[controller]\")]`\n- URLs are lowercase (configured in `RouteConfiguration.cs`)\n- Example: `DocReviewsController` \u2192 `GET /docreviews/{id}`\n\n## Profiles Solution Specifics\n\n- **GraphQL only** (NOT REST) \u2014 no traditional controllers in `profiles.api`\n- Schema: `profiles.graphql`, centralized `Mutations.cs` (~101K LOC)\n- Uses **Google Pub/Sub** for messaging (not Temporal)\n- Graph data model: `Node`, `GraphService`, `GraphRepo`\n",
+  "l2-environment-map": "# Reference: Environment Map\n\n## Machines\n\n```\njacob-main-mint (local dev \u2014 AMD Ryzen 7 7700X, 32GB DDR5, RTX 2060 SUPER)\n  \u251c\u2500\u2500 ~/activecomply-api       .NET 8 backend\n  \u251c\u2500\u2500 ~/dashboard-app          React frontend (EUI)\n  \u251c\u2500\u2500 ~/survey-app             React survey app (Firebase)\n  \u251c\u2500\u2500 ~/dev-agents             Multi-project orchestration\n  \u251c\u2500\u2500 ~/developer_bootstrap    Docker Compose (ES, Redis, RabbitMQ, Temporal)\n  \u251c\u2500\u2500 ~/thezeitgeistexperiment Personal project (AWS serverless)\n  \u251c\u2500\u2500 ~/agentdepo              New product mockups\n  \u251c\u2500\u2500 ~/inkmans_brain          Symlink \u2192 sshfs mount to agent-house\n  \u2514\u2500\u2500 ~/mnt/agent-house/...    sshfs mount (fragile, drops periodically)\n\n192.168.1.101 (agent-house \u2014 remote Linux Mint)\n  \u251c\u2500\u2500 ~/inkmans_brain/         Bot engine, prompts, scripts, creds\n  \u251c\u2500\u2500 Chrome (Flatpak)         Browser automation\n  \u2514\u2500\u2500 Cron jobs per worker     inkman-bluesky, inkman-historian, etc.\n```\n\n## Local Docker Services (developer_bootstrap)\n\n| Service | Port | Notes |\n|---------|------|-------|\n| Elasticsearch | 9200 | Password: letmein123 |\n| Kibana | 5601 | |\n| RabbitMQ Management | 15672 | |\n| Redis | 6379 | |\n| Temporal | 7233 | CLI: `docker exec temporal temporal ...` |\n\n## Application Ports\n\n| App | Port | Start Command |\n|-----|------|--------------|\n| Dashboard API (HTTP) | 5001 | `dotnet run --project src/activecomply.api.dashboard` |\n| Dashboard API (HTTPS) | 7001 | Same with HTTPS redirect |\n| Dashboard Frontend | 5173 | `cd ~/dashboard-app && yarn start` |\n| Survey App | 3000 | `cd ~/survey-app/survey-app && npm start` |\n\n## GCP Environments\n\n| Env | Project ID | K8s Cluster | Zone | Namespace |\n|-----|-----------|-------------|------|-----------|\n| Test | `activecomply-app-dev` | `activecomply-dev` | `us-central1-a` | `test` |\n| Prod | `activecomply-app` | `activecomply-prod` | `us-central1-a` | default |\n| Prod (workflows) | `activecomply-app` | `ac` | `us-central1` (regional) | default |\n\n## Credential Locations\n\n| Credential | Location |\n|-----------|----------|\n| ES API Key | `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey` |\n| ES Cached Base64 | `.claude/elasticsearch-key.local.json` |\n| GCP Service Account | `~/jacob_aaronson_service_account.json` |\n| SSH (work repos) | `~/.ssh/id_work` |\n| SSH (personal repos) | Default key |\n| Atlassian Cloud ID | `559a76c5-7f47-4832-ab40-bd6462c90c6c` |\n| Test env account ID | `e6593184d34648e981c8fd8c84084a2f` |\n| Test env creds | `CLAUDE.local.md` (per-developer, not in source control) |\n\n## Full Stack Startup Sequence\n\n```bash\n# 1. Docker services\ncd ~/developer_bootstrap && docker compose up -d\n\n# 2. Backend API\nGOOGLE_APPLICATION_CREDENTIALS=~/jacob_aaronson_service_account.json \\\nASPNETCORE_ENVIRONMENT=Development \\\ndotnet run --project ~/activecomply-api/src/activecomply.api.dashboard\n\n# 3. Frontend\ncd ~/dashboard-app && yarn start\n\n# 4. Access at https://localhost:5173 (frontend proxies to API)\n```\n\n## VPN Requirement\n\nAll GKE clusters use `--internal-ip`. If kubectl or gcloud commands timeout \u2192 connect to VPN first.\n",
+  "l2-es-conventions": "# Reference: Elasticsearch Conventions\n\n## Index Template Conventions\n\n- **Location**: `elasticsearch/templates/` (NOT `profiles/elasticsearch/` \u2014 legacy)\n- **File extension**: `.es` with plural index names (e.g., `accounts.es`, `docreviews.es`)\n- **Never** use `-template` suffix (e.g., ~~`account-template.json`~~)\n\n### Template Structure\n\n```json\nPOST _index_template/{template_name}\n{\n  \"index_patterns\": [\"template_name*\"],\n  \"composed_of\": [\"data_content\"],\n  \"template\": {\n    \"mappings\": {\n      \"dynamic\": false,\n      \"properties\": {\n        \"id\": { \"type\": \"keyword\" },\n        \"accountId\": { \"type\": \"keyword\" },\n        \"created\": { \"type\": \"date\" },\n        \"updated\": { \"type\": \"date\" },\n        \"status\": { \"type\": \"keyword\" },\n        \"isActive\": { \"type\": \"boolean\" },\n        \"count\": { \"type\": \"integer\" }\n      }\n    }\n  }\n}\n```\n\n### Field Type Rules\n\n| Use Case | Type | Notes |\n|----------|------|-------|\n| IDs, enums, exact match | `keyword` | |\n| Timestamps | `date` | |\n| True/false | `boolean` | |\n| Counters | `integer` | |\n| Sensitive data (tokens, passwords) | keyword + `\"index\": false` | Prevents indexing |\n\n### Naming\n\n- **All field names are camelCase** \u2014 matches C# JSON serializer output\n  - `accountId` NOT `account_id`\n  - `requiresHumanApproval` NOT `requires_human_approval`\n  - `updatedAt` NOT `updated_at`\n- Always set `dynamic: false` to prevent automatic field mapping\n- Use `composed_of: [\"data_content\"]` or `[\"data_content\", \"lowercase_keyword_normalizer\"]`\n\n## Common Indices\n\n| Index | Purpose |\n|-------|---------|\n| `monitored_profiles` | Social media profiles under compliance monitoring |\n| `linkedin_posts` | Archived LinkedIn posts |\n| `social_profiles` | Social media profile metadata |\n\n## Reindex Naming\n\nTemporary indices during reindex MUST use `reindex_` prefix:\n- `reindex_platform_usertokens` (temp) \u2192 `platform_usertokens` (final)\n- Reason: `reindex_` prefix won't match template patterns, avoiding automatic field analysis on temp data\n",
+  "l2-team-context": "# Reference: Team Context\n\n## How Work Flows\n\nJacob receives direction from senior/lead engineers and implements. Claude is the execution partner.\n\nTypical flow:\n1. Boss or tech lead (Ian, Justin, Austin) gives direction via Jira comment, email, or Slack\n2. Jacob pastes the direction into Claude Code\n3. Claude brainstorms approach \u2192 Jacob approves \u2192 Claude implements\n4. Jacob asks Claude to create PR, sometimes add Jira comment\n\n## Team Members (referenced in conversations)\n\n| Person | Role (inferred) | Context |\n|--------|----------------|---------|\n| Boss (unnamed) | Engineering lead | Gives ticket direction, reviews architecture decisions |\n| Ian Canida | Senior engineer | Provides technical guidance on implementation |\n| Justin | Engineer | Reviews PRs, provides code feedback |\n| Austin | Engineer | Creates PRs that Jacob reviews |\n\n## PR Review Pattern\n\n- Jacob reviews others' PRs by asking Claude: \"should I approve this?\"\n- Claude analyzes the PR and gives recommendation\n- Jacob makes the final call\n\n## Jira Workflow\n\n- Project key: `DEV-XXX`\n- Atlassian instance: `activecomply.atlassian.net`\n- Jacob reads tickets, brainstorms with Claude, implements, then comments back on the ticket\n- Boss sometimes adds context via Jira comments with specific technical direction\n"
+};
+function rmd(m){let h=m;h=h.replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>'<pre><code>'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').trim()+'</code></pre>');h=h.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)*)/gm,(_,hd,s,bd)=>{let ths=hd.split('|').filter(c=>c.trim()).map(c=>'<th>'+il(c.trim())+'</th>').join('');let rs=bd.trim().split('\n').map(r=>{let cs=r.split('|').filter(c=>c.trim()).map(c=>'<td>'+il(c.trim())+'</td>').join('');return'<tr>'+cs+'</tr>'}).join('');return'<table><thead><tr>'+ths+'</tr></thead><tbody>'+rs+'</tbody></table>'});h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');h=h.replace(/^> (.+)$/gm,'<blockquote><p>$1</p></blockquote>');h=h.replace(/^---$/gm,'<hr>');h=h.replace(/^- (.+)$/gm,'<li>$1</li>');h=h.replace(/((?:<li>.*<\/li>\n?)+)/g,'<ul>$1</ul>');h=h.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');h=h.replace(/^(?!<[hupoltbs]|$|\s*$)(.+)$/gm,'<p>$1</p>');h=il(h);return h}
+function il(t){t=t.replace(/`([^`]+)`/g,'<code>$1</code>');t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');t=t.replace(/\*(.+?)\*/g,'<em>$1</em>');t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');return t}
+function lN(l){return l===0?'Level 0 — Apex':l===1?'Level 1 — Playbook':l===2?'Level 2 — Reference':''}
+function lC(l){return l===0?'l0':l===1?'l1':l===2?'l2':''}
+function buildSb(){const sb=document.getElementById('sb');let h='';let cl=-1;for(const d of DOCS.project.docs){if(d.level!==cl){cl=d.level;h+='<div class="lvl '+lC(d.level)+'">'+lN(d.level)+'</div>'}const n=CONTENT[d.id]?CONTENT[d.id].split('\n').length:0;h+='<div class="ni" data-id="'+d.id+'" onclick="show(\''+d.id+'\')"><span>'+d.title+'</span><span class="ln">'+n+'L</span></div>'}sb.innerHTML=h}
+function show(id){document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));const a=document.querySelector('.ni[data-id="'+id+'"]');if(a)a.classList.add('on');const ct=document.getElementById('ct');const d=DOCS.project.docs.find(x=>x.id===id);if(!d||!CONTENT[id]){ct.innerHTML='<p style="color:var(--td)">No content.</p>';return}const b=d.level!==null?'<span class="badge '+lC(d.level)+'">'+lN(d.level)+'</span>':'';ct.innerHTML='<div class="ch"><div class="bc">'+d.path+'</div><h2>'+d.title+b+'</h2></div><div class="md">'+rmd(CONTENT[id])+'</div>';ct.scrollTop=0}
+buildSb();
+if(DOCS.project.docs.length)show(DOCS.project.docs[0].id);
+</script>
+</body>
+</html>

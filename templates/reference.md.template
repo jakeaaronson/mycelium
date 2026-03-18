@@ -1,0 +1,24 @@
+# Reference: {Topic}
+
+> Level 2 reference sheet. Only loaded when a playbook points here.
+> This is lookup material — schemas, URLs, configurations, scripts.
+
+## {Section}
+
+<!-- Tables, code blocks, schemas — whatever the model needs to look up. -->
+
+| Key | Value |
+|-----|-------|
+| {key} | {value} |
+
+## {Section}
+
+```bash
+{reusable command or script}
+```
+
+## {Section}
+
+```json
+{schema or configuration example}
+```

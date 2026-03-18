@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mycelium — Pyramid Viewer</title>
+<style>
+  :root {
+    --bg: #0a0a0b;
+    --surface: #141416;
+    --surface2: #1c1c20;
+    --border: #27272a;
+    --text: #e4e4e7;
+    --text-muted: #a1a1aa;
+    --text-dim: #71717a;
+    --accent-l0: #f59e0b;
+    --accent-l1: #3b82f6;
+    --accent-l2: #8b5cf6;
+    --accent-l3: #6b7280;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: var(--accent-l1); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 2rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.3rem; }
+  .header p { color: var(--text-muted); font-size: 0.85rem; }
+  .header-right { font-size: 0.75rem; color: var(--text-dim); }
+
+  .container {
+    display: flex;
+    height: calc(100vh - 90px);
+  }
+
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1rem 0;
+  }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .project-group { margin-bottom: 1.5rem; }
+  .project-name {
+    padding: 0.4rem 1.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .level-label {
+    padding: 0.5rem 1.2rem 0.2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .level-label.l0 { color: var(--accent-l0); }
+  .level-label.l1 { color: var(--accent-l1); }
+  .level-label.l2 { color: var(--accent-l2); }
+
+  .nav-item {
+    padding: 0.35rem 1.2rem 0.35rem 1.8rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .nav-item:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+  .nav-item.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-left-color: var(--accent-l1);
+  }
+  .nav-item .lines {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .nav-item.l0-item { border-left-color: transparent; }
+  .nav-item.l0-item.active { border-left-color: var(--accent-l0); }
+
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem 3rem;
+    max-width: 900px;
+  }
+  .content::-webkit-scrollbar { width: 6px; }
+  .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .content-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .content-header .breadcrumb {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+  .content-header .breadcrumb span { color: var(--text-muted); }
+  .content-header h2 { font-size: 1.1rem; }
+  .level-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 0.6rem;
+    vertical-align: middle;
+  }
+  .level-badge.l0 { background: rgba(245,158,11,0.15); color: var(--accent-l0); }
+  .level-badge.l1 { background: rgba(59,130,246,0.15); color: var(--accent-l1); }
+  .level-badge.l2 { background: rgba(139,92,246,0.15); color: var(--accent-l2); }
+
+  .markdown-body {
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+  .markdown-body h1 { font-size: 1.2rem; margin: 1.5rem 0 0.8rem; font-weight: 600; }
+  .markdown-body h2 { font-size: 1.05rem; margin: 1.3rem 0 0.6rem; font-weight: 600; color: var(--text); }
+  .markdown-body h3 { font-size: 0.9rem; margin: 1rem 0 0.5rem; font-weight: 600; color: var(--text-muted); }
+  .markdown-body p { margin: 0.5rem 0; color: var(--text-muted); }
+  .markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; color: var(--text-muted); }
+  .markdown-body li { margin: 0.25rem 0; }
+  .markdown-body li > ul { margin: 0.15rem 0; }
+  .markdown-body strong { color: var(--text); font-weight: 600; }
+  .markdown-body em { font-style: italic; color: var(--text-muted); }
+  .markdown-body code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    color: #e2b86b;
+  }
+  .markdown-body pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+  }
+  .markdown-body pre code {
+    background: none;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+  .markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.8rem 0;
+    font-size: 0.8rem;
+  }
+  .markdown-body th {
+    text-align: left;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 2px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+  }
+  .markdown-body td {
+    padding: 0.4rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .markdown-body tr:hover td { background: var(--surface); }
+  .markdown-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+  .markdown-body blockquote {
+    border-left: 3px solid var(--border);
+    padding-left: 1rem;
+    color: var(--text-dim);
+    margin: 0.8rem 0;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .stat-card .value { font-size: 1.4rem; font-weight: 700; }
+  .stat-card .label { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+  .stat-card.l0 .value { color: var(--accent-l0); }
+  .stat-card.l1 .value { color: var(--accent-l1); }
+  .stat-card.l2 .value { color: var(--accent-l2); }
+
+  .pyramid-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin: 2rem 0;
+    max-width: 650px;
+  }
+  .pyramid-tier {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+  }
+  .pyramid-tier:hover { background: var(--surface); }
+  .tier-bar { height: 8px; border-radius: 4px; flex-shrink: 0; }
+  .tier-label { font-size: 0.8rem; min-width: 70px; font-weight: 600; }
+  .tier-desc { font-size: 0.75rem; color: var(--text-dim); }
+
+  .context-flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+    flex-wrap: wrap;
+  }
+  .flow-box {
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .flow-arrow { color: var(--text-dim); font-size: 1.2rem; }
+
+  /* Snapshots */
+  .snap-group { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.8rem; }
+  .snap-label {
+    padding: 0.4rem 1.2rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+  }
+  .snap-label .count {
+    font-size: 0.65rem;
+    background: var(--surface2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .snap-list { display: none; }
+  .snap-list.open { display: block; }
+  .snap-item {
+    padding: 0.5rem 1.2rem 0.5rem 1.8rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .snap-item:hover { background: var(--surface); color: var(--text-muted); }
+  .snap-item.active { background: var(--surface2); color: var(--text); border-left-color: #10b981; }
+  .snap-item .snap-date { color: var(--text-muted); font-size: 0.75rem; }
+  .snap-item .snap-type {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+  }
+  .snap-type.reflect { background: rgba(16,185,129,0.15); color: #10b981; }
+  .snap-type.backup { background: rgba(245,158,11,0.15); color: var(--accent-l0); }
+  .snap-detail { font-size: 0.7rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+  .snap-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .snap-card h3 { font-size: 0.95rem; margin-bottom: 0.5rem; }
+  .snap-meta { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 0.8rem 0; font-size: 0.8rem; color: var(--text-muted); }
+  .snap-meta .label { color: var(--text-dim); font-size: 0.7rem; }
+  .snap-projects { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
+  .snap-projects span {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    background: var(--surface2);
+    border-radius: 3px;
+    color: var(--text-muted);
+  }
+  .snap-restore-hint {
+    margin-top: 1rem;
+    padding: 0.8rem;
+    background: rgba(16,185,129,0.08);
+    border: 1px solid rgba(16,185,129,0.2);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #10b981;
+  }
+  .snap-restore-hint code { color: #10b981; background: rgba(16,185,129,0.15); }
+  .snap-timeline {
+    position: relative;
+    padding-left: 1.2rem;
+    border-left: 2px solid var(--border);
+    margin: 1.5rem 0;
+  }
+  .snap-timeline-item {
+    position: relative;
+    padding: 0.8rem 0 0.8rem 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .snap-timeline-item:hover { background: var(--surface); border-radius: 0 6px 6px 0; }
+  .snap-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.45rem;
+    top: 1.15rem;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--bg);
+  }
+  .snap-timeline-item.reflect::before { border-color: #10b981; background: rgba(16,185,129,0.3); }
+  .snap-timeline-item.backup::before { border-color: var(--accent-l0); background: rgba(245,158,11,0.3); }
+
+  @media (max-width: 800px) {
+    .container { flex-direction: column; height: auto; }
+    .sidebar { width: 100%; min-width: 100%; max-height: 40vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .content { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Mycelium</h1>
+    <p>Pyramid documentation viewer — browse the hierarchy, see what loads when</p>
+  </div>
+  <div class="header-right">Built from 146 sessions / 212 MB</div>
+</div>
+
+<div class="container">
+  <div class="sidebar" id="sidebar"></div>
+  <div class="content" id="content"></div>
+</div>
+
+<script>
+// ── Data (auto-generated by build-viewer.py) ──
+const DOCS = {
+  "_framework": {
+    "name": "Framework",
+    "docs": [
+      {
+        "id": "home",
+        "title": "Overview",
+        "level": null,
+        "path": null
+      },
+      {
+        "id": "readme",
+        "title": "README.md",
+        "level": null,
+        "path": "/home/jacob/mycelium/README.md"
+      },
+      {
+        "id": "adaptation_guide",
+        "title": "Adaptation Guide",
+        "level": null,
+        "path": "/home/jacob/mycelium/docs/adaptation-guide.md"
+      },
+      {
+        "id": "why_this_works",
+        "title": "Why This Works",
+        "level": null,
+        "path": "/home/jacob/mycelium/docs/why-this-works.md"
+      }
+    ]
+  },
+  "activecomply-api": {
+    "name": "Activecomply Api",
+    "docs": [
+      {
+        "id": "aa-claude",
+        "title": "CLAUDE.md",
+        "level": 0,
+        "path": "CLAUDE.md"
+      },
+      {
+        "id": "aa-deployment",
+        "title": "Deployment",
+        "level": 1,
+        "path": "docs/playbooks/deployment.md"
+      },
+      {
+        "id": "aa-elasticsearch",
+        "title": "Elasticsearch",
+        "level": 1,
+        "path": "docs/playbooks/elasticsearch.md"
+      },
+      {
+        "id": "aa-git-workflow",
+        "title": "Git Workflow",
+        "level": 1,
+        "path": "docs/playbooks/git-workflow.md"
+      },
+      {
+        "id": "aa-multi-repo",
+        "title": "Multi Repo",
+        "level": 1,
+        "path": "docs/playbooks/multi-repo.md"
+      },
+      {
+        "id": "aa-temporal",
+        "title": "Temporal",
+        "level": 1,
+        "path": "docs/playbooks/temporal.md"
+      },
+      {
+        "id": "aa-testing",
+        "title": "Testing",
+        "level": 1,
+        "path": "docs/playbooks/testing.md"
+      },
+      {
+        "id": "aa-ref-code-style",
+        "title": "Code Style",
+        "level": 2,
+        "path": "docs/reference/code-style.md"
+      },
+      {
+        "id": "aa-ref-environment-map",
+        "title": "Environment Map",
+        "level": 2,
+        "path": "docs/reference/environment-map.md"
+      },
+      {
+        "id": "aa-ref-es-conventions",
+        "title": "Es Conventions",
+        "level": 2,
+        "path": "docs/reference/es-conventions.md"
+      },
+      {
+        "id": "aa-ref-team-context",
+        "title": "Team Context",
+        "level": 2,
+        "path": "docs/reference/team-context.md"
+      }
+    ]
+  },
+  "thezeitgeistexperiment": {
+    "name": "Thezeitgeistexperiment",
+    "docs": [
+      {
+        "id": "th-claude",
+        "title": "CLAUDE.md",
+        "level": 0,
+        "path": "CLAUDE.md"
+      },
+      {
+        "id": "th-aws-infra",
+        "title": "Aws Infra",
+        "level": 1,
+        "path": "docs/playbooks/aws-infra.md"
+      },
+      {
+        "id": "th-email-system",
+        "title": "Email System",
+        "level": 1,
+        "path": "docs/playbooks/email-system.md"
+      },
+      {
+        "id": "th-frontend",
+        "title": "Frontend",
+        "level": 1,
+        "path": "docs/playbooks/frontend.md"
+      },
+      {
+        "id": "th-lambda-workflow",
+        "title": "Lambda Workflow",
+        "level": 1,
+        "path": "docs/playbooks/lambda-workflow.md"
+      },
+      {
+        "id": "th-seed-reindex",
+        "title": "Seed Reindex",
+        "level": 1,
+        "path": "docs/playbooks/seed-reindex.md"
+      },
+      {
+        "id": "th-testing",
+        "title": "Testing",
+        "level": 1,
+        "path": "docs/playbooks/testing.md"
+      },
+      {
+        "id": "th-ref-aws-resources",
+        "title": "Aws Resources",
+        "level": 2,
+        "path": "docs/reference/aws-resources.md"
+      },
+      {
+        "id": "th-ref-project-structure",
+        "title": "Project Structure",
+        "level": 2,
+        "path": "docs/reference/project-structure.md"
+      },
+      {
+        "id": "th-ref-visual-design",
+        "title": "Visual Design",
+        "level": 2,
+        "path": "docs/reference/visual-design.md"
+      }
+    ]
+  }
+};
+const CONTENT = {
+  "readme": "# Mycelium\n\n**A self-improving memory and documentation system for AI coding agents.**\n*Hierarchical memory for non-hierarchical organizations.*\n\nYour AI assistant forgets everything between conversations. Mycelium fixes that, not by stuffing more into its context window, but by loading *only what's relevant* and getting smarter every session.\n\nWorks with Claude Code, Codex, Gemini CLI, Cursor, Cline, Windsurf, Goose, and GitHub Copilot.\n\nLicensed under the [Anti-Capitalist Software License](https://anticapitalist.software/). Free for individuals, cooperatives, nonprofits, and educational institutions.\n\n---\n\n## The Problem\n\nContext is everything. An AI model with the right 30 lines of context will outperform the same model with 500 lines of unfocused documentation. Research on transformer attention shows that irrelevant context actively degrades performance. The model doesn't just ignore the noise, it competes for the same attention budget as your actual instructions. More is not better. *Right* is better.\n\nEvery AI coding tool loads an instruction file on every conversation. These files grow. A 400-line instruction file means the model wastes attention on 370 lines that don't matter right now. Your corrections get lost between sessions. The model makes the same mistakes twice. In our testing, 41% of sessions hit context window limits. The model literally ran out of room to think because the documentation was taking up too much space.\n\n## What Mycelium Does\n\n**1. The Pyramid.** Replaces one bloated file with a layered structure:\n\n```\n         \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n         \u2502  50 lines \u2502  Always loaded. Identity + routing table.\n         \u2514\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2518\n        \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n        \u2502  Playbooks   \u2502  Loaded per task. \"How to do X.\"\n        \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n   \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n   \u2502   Reference Sheets    \u2502  Loaded when a playbook points to it.\n   \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n```\n\nInstead of 400 lines every time, the model loads ~80 lines of exactly what it needs.\n\n**2. The Feedback Loop.** Every session teaches the system:\n\n```\nYou work normally > session ends > hook detects what went wrong >\nyou run /reflect > docs improve > next session is better\n```\n\nThe model corrected you? That correction becomes a playbook rule. You re-explained something? That knowledge gets documented. Context overflowed? The docs get trimmed. **The system composts its own mistakes into better documentation.**\n\n**3. Tool Agnostic.** The playbooks are just markdown files. Any AI tool or human can read them. Only the \"entry point\" filename changes per tool. One command generates instruction files for all your tools at once.\n\n## Quick Start\n\n```bash\ngit clone https://github.com/YOUR_USERNAME/mycelium.git\ncd mycelium\n./setup.sh\n```\n\nThe wizard walks you through everything: finds your projects, analyzes your current docs, creates the structure, installs the feedback loop.\n\n## How /reflect Works\n\nThree levels of self-improvement:\n\n```\n/reflect          Fix docs from recent sessions. Quick, safe.\n/reflect 2        Replay full history. Restructure playbooks.\n/reflect 3        Rethink the framework itself. For contributors.\n/reflect undo     Restore from last snapshot.\n/reflect dry-run  Preview changes before applying.\n```\n\nEvery reflect snapshots your docs first. You can always go back.\n\n## Why \"Mycelium\"?\n\nMycelium is the underground fungal network that connects trees in a forest. No central authority. Nutrients transfer to where they're needed. Dead matter decomposes into food for new growth. The network gets stronger as the forest grows.\n\nThis project works the same way:\n- **No vendor lock-in.** Works with any AI tool.\n- **Nutrients flow where needed.** Playbooks load only when relevant.\n- **Dead matter becomes growth.** Failed sessions become better documentation.\n- **Gets stronger over time.** The feedback loop means your docs evolve.\n\nLike mycelium, it's invisible infrastructure. You don't see it working. You just notice that everything works better.\n\n## Project Structure\n\n```\nmycelium/\n\u251c\u2500\u2500 setup.sh                    Start here\n\u251c\u2500\u2500 validate.py                 Check your docs for problems\n\u251c\u2500\u2500 viewer.html                 Browse the pyramid visually\n\u251c\u2500\u2500 rollback.sh                 Restore from any backup\n\u2502\n\u251c\u2500\u2500 examples/                   Two real-world implementations\n\u251c\u2500\u2500 templates/                  Blank starting templates\n\u251c\u2500\u2500 adapters/                   Generate for Codex, Gemini, Cursor, etc.\n\u251c\u2500\u2500 feedback-loop/              SessionEnd hook + /reflect + /status\n\u2514\u2500\u2500 docs/                       Theory, adaptation guide, research\n```\n\n## The Numbers\n\nBuilt from mining 146 real coding sessions (212 MB of conversation data):\n\n| Metric | Before Mycelium | Target |\n|--------|----------------|--------|\n| Instruction file size | 300-500 lines (always loaded) | ~50 lines + playbooks on demand |\n| Context overflow rate | 41% of sessions | <10% |\n| Corrections per session | Frequent (same mistakes repeated) | Declining toward zero |\n| Documentation maintenance | Manual, sporadic | Automatic via /reflect |\n\n## Who This Is For\n\n- **Individual developers** using AI coding assistants who are tired of re-explaining things\n- **Small teams and cooperatives** who want shared, evolving documentation\n- **Educators** teaching AI-assisted development\n- **Open source maintainers** who want their repos to be AI-friendly\n\n## Who This Is NOT For\n\nPer the [Anti-Capitalist Software License v1.4](https://anticapitalist.software/):\n\n- Not for organizations that extract profit from workers without shared ownership\n- Not for law enforcement or military\n- Not for surveillance or exploitation\n\nIf your organization has owners who aren't workers, or workers who aren't owners, this license doesn't apply to you.\n\n## Related Work\n\n- [AGENTS.md standard](https://agents.md/) . Cross-tool instruction file format (40K+ repos)\n- [Anthropic's CLAUDE.md](https://docs.anthropic.com/en/docs/claude-code/memory) . The convention this builds on\n- [Letta Code](https://www.letta.com/blog/letta-code) . Memory-first coding agent\n- [ACE (Agentic Context Engineering)](https://github.com/ace-agent/ace) . Context engineering framework\n- [Memory for AI Agents (The New Stack)](https://thenewstack.io/memory-for-ai-agents-a-new-paradigm-of-context-engineering/) . The paradigm shift\n- [Hindsight](https://github.com/vectorize-io/hindsight) . Learning agent memory\n\n## License\n\n[Anti-Capitalist Software License v1.4](https://anticapitalist.software/) . See [LICENSE](LICENSE).\n",
+  "adaptation_guide": "# Adaptation Guide\n\nHow to apply the pyramid architecture to your own projects.\n\n## Quick Start (15 minutes)\n\n### 1. Measure Your Current State\n\nCount the lines in your CLAUDE.md (or equivalent). If it's over 80 lines, you'll benefit from this approach.\n\n```bash\nwc -l CLAUDE.md\n```\n\nCheck your context overflow rate. If you use Claude Code:\n```bash\n# Count sessions that hit context limits\ngrep -l \"continued from a previous\" ~/.claude/projects/*/[!s]*.jsonl | wc -l\n```\n\n### 2. Categorize Every Section\n\nRead your CLAUDE.md line by line. For each section, ask:\n\n| Question | If Yes \u2192 |\n|----------|----------|\n| Would violating this cause a build failure or security issue? | **Keep in Level 0** |\n| Is this needed in >50% of conversations? | **Keep in Level 0** |\n| Is this specific to one type of task (testing, deploying, etc.)? | **Move to a playbook** |\n| Is this lookup/reference material (schemas, URLs, examples)? | **Move to reference** |\n| Can the model figure this out from reading the code? | **Delete it** |\n\n### 3. Create the Directory Structure\n\n```bash\nmkdir -p docs/playbooks docs/reference\n```\n\n### 4. Write Your Routing Table\n\nIn CLAUDE.md, replace the moved sections with a routing table:\n\n```markdown\n## Before You Start\n\n| Task | Read First |\n|------|-----------|\n| Writing tests | `docs/playbooks/testing.md` |\n| Deploying | `docs/playbooks/deployment.md` |\n```\n\n### 5. Test It\n\nStart a new Claude Code session. Give it a task that would have used the old documentation. See if:\n- It reads the right playbook\n- It follows the instructions correctly\n- The conversation stays shorter\n\n## Mining Your Conversation History\n\nIf you use Claude Code, your conversation history is stored as JSONL files:\n\n```\n~/.claude/projects/{project-path}/*.jsonl\n```\n\nEach line is a JSON object with `type` (user/assistant), `message.content`, and metadata.\n\n### What to Look For\n\n1. **Repeated commands** \u2014 If you or the model runs the same command in >3 sessions, it belongs in a playbook\n2. **Repeated corrections** \u2014 \"No, not that, do X instead\" \u2192 This is a playbook rule\n3. **Context re-explanations** \u2014 \"Remember, we use Y for Z\" \u2192 This belongs in Level 0 or a playbook\n4. **Common task sequences** \u2014 Steps that always happen together \u2192 These are a playbook workflow\n\n### Extraction Script\n\n```python\nimport json, glob, os\nfrom collections import Counter\n\nmessages = []\nfor f in glob.glob(os.path.expanduser(\"~/.claude/projects/YOUR-PROJECT/*.jsonl\")):\n    for line in open(f):\n        obj = json.loads(line)\n        if obj.get(\"type\") == \"user\":\n            content = obj.get(\"message\", {}).get(\"content\", \"\")\n            if isinstance(content, str) and len(content) > 20:\n                messages.append(content)\n\nprint(f\"Total messages: {len(messages)}\")\n# Review these manually for patterns\nfor msg in messages[:50]:\n    print(f\"  - {msg[:120]}\")\n```\n\n## Playbook Writing Tips\n\n**Good playbook** (actionable, specific, 15 lines):\n```markdown\n# Playbook: Elasticsearch Reindexing\n\n## Steps\n1. Create temp index with `reindex_` prefix\n2. Reindex: `POST _reindex { \"source\": {\"index\": \"original\"}, \"dest\": {\"index\": \"reindex_original\"} }`\n3. Delete original: `DELETE /original`\n4. Reindex back: swap source/dest\n5. Delete temp: `DELETE /reindex_original`\n\n## Why the `reindex_` prefix\nTemplate patterns won't match, preventing automatic field analysis on temp data.\n```\n\n**Bad playbook** (tutorial, verbose, 80 lines):\n```markdown\n# Elasticsearch Reindexing Guide\n\n## What is Reindexing?\nReindexing is the process of copying documents from one index to another...\n[60 more lines of explanation]\n```\n\nThe model already knows what reindexing is. Tell it what's **specific to your project**.\n\n## Sizing Guidelines\n\n| Level | Target Size | Content Type |\n|-------|-------------|-------------|\n| Level 0 (CLAUDE.md) | 30-50 lines | Identity, hard rules, routing table |\n| Level 1 (playbooks) | 10-40 lines each | Task-specific workflows |\n| Level 2 (reference) | Any length | Lookup tables, schemas, scripts |\n\nThe total documentation can be as long as needed \u2014 the point is that only the relevant slice is loaded at any time.\n\n## Common Pitfalls\n\n1. **Routing table is too vague** \u2014 \"For backend work, see playbook\" is useless. Be specific: \"For Elasticsearch reindexing, see playbook.\"\n2. **Playbooks are tutorials** \u2014 Don't explain concepts. Document your project's specific conventions and commands.\n3. **Level 0 creep** \u2014 Over time, people add \"just one more thing\" to CLAUDE.md. Audit quarterly.\n4. **Orphaned playbooks** \u2014 If the routing table doesn't point to it, the model won't find it. Keep the routing table current.\n",
+  "why_this_works": "# Why Hierarchical Context Works Better\n\n## The Attention Bottleneck\n\nTransformer-based models (GPT, Claude, etc.) use self-attention to process context. Every token in the context window attends to every other token. When you load 1,500 lines of documentation but only 30 lines are relevant to the current task:\n\n- The model must process all 1,500 lines\n- Relevant instructions compete for attention weight with irrelevant ones\n- Instruction-following accuracy degrades as context length grows\n\nThis isn't theoretical \u2014 it's been measured. Research on \"lost in the middle\" effects (Liu et al., 2023) shows that models perform worse on information placed in the middle of long contexts. Your critical rules buried on line 280 of a CLAUDE.md file are literally harder for the model to follow than the same rules at line 10 of a 30-line file.\n\n## Context Window Overflow\n\nEvery AI model has a finite context window. The conversation history (your messages, model responses, tool calls, file contents) accumulates until it hits the limit. When it overflows:\n\n1. The system compresses or summarizes earlier messages\n2. Nuance, corrections, and implicit context are lost\n3. The model may repeat mistakes it was already corrected on\n\nLoading 1,500 lines of documentation on every conversation accelerates this. If 80% of that documentation is irrelevant to the current task, you're burning context budget on noise.\n\n## The Pyramid Solution\n\nThe pyramid architecture solves this by matching documentation loading to task scope:\n\n| Approach | Context Loaded | Relevance |\n|----------|---------------|-----------|\n| Flat CLAUDE.md | Everything, every time | ~10-20% relevant |\n| Pyramid Level 0 only | 50 lines | ~80% relevant |\n| Pyramid L0 + 1 playbook | 80-90 lines | ~90% relevant |\n| Pyramid L0 + L1 + L2 | 100-150 lines | ~95% relevant |\n\nThe model gets *more relevant* context while loading *less total* context.\n\n## Why Routing Tables Work\n\nThe key innovation is the routing table in Level 0. It works because:\n\n1. **Task classification is easy** \u2014 The model can tell whether it's writing tests, deploying, or debugging from the user's first message\n2. **File reads are cheap** \u2014 Reading a playbook file costs 1 tool call, much cheaper than the attention cost of pre-loading everything\n3. **Self-directed learning** \u2014 The model decides what it needs, loading only relevant playbooks\n\n## Why Not Just Use RAG?\n\nRetrieval-Augmented Generation (embedding your docs and doing semantic search) is the automated version of this. It works, but has tradeoffs:\n\n**RAG advantages:**\n- No manual curation needed\n- Scales to thousands of documents\n- Handles fuzzy queries\n\n**Manual pyramid advantages:**\n- Higher precision \u2014 human curation beats semantic similarity for project-specific knowledge\n- No infrastructure \u2014 just markdown files\n- Transparent \u2014 you can read and audit what the model will see\n- Works with any AI tool \u2014 not tied to a specific RAG implementation\n\nFor most individual developers and small teams, the manual pyramid is simpler and more effective. RAG becomes worth it when you have hundreds of documents that change frequently.\n\n## Empirical Observations\n\nFrom analyzing 146 Claude Code sessions:\n\n- **22% of sessions** hit context window overflow, requiring continuation\n- **Most overflows** happened in the two projects with the longest CLAUDE.md files\n- **Repeated corrections** (user re-explaining the same thing) correlated with documentation length \u2014 more docs meant more things for the model to miss\n- **The most productive sessions** were short, focused tasks where the model already knew what to do \u2014 suggesting that pre-loaded context quality matters more than quantity\n",
+  "aa-claude": "# CLAUDE.md\n\n**.NET 8 compliance API** \u2014 Social media monitoring, document reviews, and compliance workflows for financial services. Two solutions: `activecomply.sln` (main) and `profiles.sln` (social monitoring, GraphQL).\n\n## Hard Rules\n\n2. **Namespace separation** \u2014 `activecomply.sln` NEVER references `profiles.*` namespaces (except `activecomply.common`). `profiles.sln` may reference `activecomply.*`.\n3. **No commits unless asked** \u2014 Never run `git add` or `git commit` without explicit user request.\n4. **LF line endings** \u2014 Enforced via `.gitattributes`. All new files must use LF.\n5. **Minimal code** \u2014 Write only what's needed. No speculative features, no over-engineering.\n6. **Branch from `development`** \u2014 Never branch from `main`. Branch naming: `DEV-{ticket}-{kebab-case}`.\n\n## Build & Test\n\n```\ndotnet build activecomply.sln          # Main solution\ndotnet build profiles.sln              # Profiles solution\ndotnet test activecomply.sln           # All main tests\ndotnet test profiles.sln               # All profiles tests\ndotnet test path/to.csproj --filter \"FullyQualifiedName=NS.Class.Method\"  # Single test\n```\n\nFast rebuild: `dotnet build activecomply.sln --no-restore --verbosity quiet`\n\n## Before You Start\n\n| Task | Read First |\n|------|-----------|\n| Elasticsearch work (queries, reindex, templates) | `docs/playbooks/elasticsearch.md` |\n| Writing or running tests | `docs/playbooks/testing.md` |\n| Checking deployments or K8s | `docs/playbooks/deployment.md` |\n| Git branching, commits, or PRs | `docs/playbooks/git-workflow.md` |\n| Temporal workflows | `docs/playbooks/temporal.md` |\n| Working across multiple repos | `docs/playbooks/multi-repo.md` |\n\n## Key Constants\n\n- **Atlassian Cloud ID**: `559a76c5-7f47-4832-ab40-bd6462c90c6c`\n- **GCP Test Project**: `activecomply-app-dev`\n- **GCP Prod Project**: `activecomply-app`\n- **ES API Key Location**: `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey`\n- **ES Cached Key**: `.claude/elasticsearch-key.local.json`\n- **Base branch**: `development`\n\n## Do Not\n\n- Use CDK or Terraform (we use CloudFormation for zeitgeist, Kustomize for ActiveComply)\n- Add mocking frameworks like Moq \u2014 use xUnit patterns and test fakes\n- Use `profiles/elasticsearch/` templates (legacy) \u2014 use `elasticsearch/templates/`\n- Reference `profiles.*` namespaces from `activecomply.sln` projects\n",
+  "aa-deployment": "# Playbook: Deployment & Infrastructure\n\n## Check Latest Deployment\n\n```bash\n# Latest release\ngcloud deploy releases list \\\n  --delivery-pipeline=activecomply-api \\\n  --region=us-central1 \\\n  --project=activecomply-app-dev \\\n  --limit=1 --format=\"value(name)\"\n\n# Release details\ngcloud deploy releases describe <release-name> \\\n  --delivery-pipeline=activecomply-api \\\n  --region=us-central1 --project=activecomply-app-dev\n```\n\n## Kubernetes (VPN Required)\n\n```bash\n# Connect to test cluster\ngcloud container clusters get-credentials activecomply-dev \\\n  --zone us-central1-a --project activecomply-app-dev --internal-ip\n\n# Pods, logs, describe\nkubectl get pods -n test\nkubectl logs -n test <pod-name>\nkubectl describe pod -n test <pod-name>\n```\n\nIf kubectl fails with timeout \u2192 user needs to connect to VPN first.\n\n## Environments\n\n| Env | GCP Project | K8s Cluster | K8s Namespace |\n|-----|------------|-------------|---------------|\n| Test | `activecomply-app-dev` | `activecomply-dev` (us-central1-a) | `test` |\n| Prod | `activecomply-app` | `activecomply-prod` (us-central1-a) | default |\n| Prod workflows | `activecomply-app` | `ac` (us-central1, regional) | default |\n\n## After Merge\n\n1. Allow time for Cloud Build + deployment\n2. Check deployment timestamps to verify your code is included\n3. Monitor pod rollout: `kubectl get pods -n test -w`\n",
+  "aa-elasticsearch": "# Playbook: Elasticsearch\n\n## Credentials\n\n1. Check `.claude/elasticsearch-key.local.json` for cached base64 key\n2. If missing: read `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey` (Id + Key)\n3. Create: `echo -n \"API_KEY_ID:API_KEY\" | base64`\n4. Cache it: `{\"encoded_key\": \"BASE64_STRING\"}` in `.claude/elasticsearch-key.local.json`\n\n## Querying\n\n```bash\n# Search\ncurl -X GET \"localhost:9200/{index}/_search?size=10&pretty\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: ApiKey <BASE64_KEY>'\n\n# Count\ncurl -X GET \"localhost:9200/{index}/_count?pretty\" \\\n  -H 'Authorization: ApiKey <BASE64_KEY>'\n\n# Update by query\ncurl -X POST \"localhost:9200/{index}/_update_by_query?refresh=true&pretty\" \\\n  -H 'Content-Type: application/json' \\\n  -H 'Authorization: ApiKey <BASE64_KEY>' \\\n  -d '{\"script\":{\"source\":\"ctx._source.field = params.val\",\"lang\":\"painless\",\"params\":{\"val\":\"new\"}},\"query\":{\"term\":{\"status\":\"active\"}}}'\n```\n\nCommon indices: `monitored_profiles`, `linkedin_posts`, `social_profiles`\n\n## Reindexing\n\n1. Create temp index with `reindex_` prefix (avoids template pattern matches)\n2. `POST _reindex` source \u2192 `reindex_{name}`\n3. Delete original index\n4. `POST _reindex` `reindex_{name}` \u2192 original name\n5. Delete temp index\n\n## Templates\n\n- Location: `elasticsearch/templates/` (NOT `profiles/elasticsearch/` \u2014 that's legacy)\n- Extension: `.es` with plural index names (e.g., `accounts.es`)\n- Always set `dynamic: false`, use `keyword` for IDs, `date` for timestamps\n- Use `composed_of: [\"data_content\"]` or `[\"data_content\", \"lowercase_keyword_normalizer\"]`\n- All field names are **camelCase** (not snake_case) \u2014 matches C# JSON serialization\n\nSee `docs/reference/es-conventions.md` for full template conventions.\n",
+  "aa-git-workflow": "# Playbook: Git & PR Workflow\n\n## Branch Naming\n\n```\nDEV-{ticket_number}-{kebab-case-description}\n```\n\nExample: `DEV-623-linkedin-org-data-ingestion`\n\n## The Full Cycle\n\n1. **Create branch from `development`** (never from `main`):\n   ```bash\n   git checkout development && git pull\n   git checkout -b DEV-XXX-description\n   ```\n2. **Make changes** \u2014 build and test before committing\n3. **Commit** (only when user says \"commit\"):\n   ```bash\n   git add .  # Include ALL files unless told otherwise\n   git commit  # Conventional format: feat:/fix:/refactor:/chore:\n   ```\n4. **Push and create PR**:\n   ```bash\n   git push -u origin DEV-XXX-description\n   gh pr create --base development --title \"DEV-XXX: description\"\n   ```\n5. **Post to Jira** \u2014 User often asks \"add a comment to the Jira ticket\" after PR creation\n\n## Common Mistakes\n\n- Creating PR against `main` \u2192 Always target `development`\n- Wrong branch naming \u2192 Must start with `DEV-{number}`\n- Committing without being asked \u2192 Never auto-commit\n- Not merging `development` into feature branch before push \u2192 Check for conflicts first\n\n## CI/CD\n\nAfter push, check build status:\n```bash\ngh pr checks {PR_NUMBER}\ngh run list --limit 3\n```\n\nIf build fails: read errors, fix, push again. User will say \"see whats wrong with the build and fix it.\"\n",
+  "aa-multi-repo": "# Playbook: Multi-Repo Operations\n\n## Repository Locations\n\n| Repo | Path | Stack | Default Branch |\n|------|------|-------|---------------|\n| activecomply-api | `~/activecomply-api` | .NET 8 / C# | `development` |\n| dashboard-app | `~/dashboard-app` | React / JS / EUI | `development` |\n| survey-app | `~/survey-app` | React / Vite / Firebase | `development` |\n| dev-agents | `~/dev-agents` | Multi-project orchestration | `development` |\n\n## Cross-Repo Changes\n\nWhen a change spans backend + frontend:\n1. Make backend changes in `~/activecomply-api`\n2. Make frontend changes in `~/dashboard-app`\n3. Create separate PRs for each repo\n4. Note the dependency in both PR descriptions\n\n## Local Dev Stack\n\nFull stack requires (in order):\n1. Docker services: `cd ~/developer_bootstrap && docker compose up -d` (ES, Redis, RabbitMQ, Temporal)\n2. Backend: `GOOGLE_APPLICATION_CREDENTIALS=~/jacob_aaronson_service_account.json ASPNETCORE_ENVIRONMENT=Development dotnet run --project ~/activecomply-api/src/activecomply.api.dashboard`\n3. Frontend: `cd ~/dashboard-app && yarn start`\n\nPorts: ES 9200, Kibana 5601, RabbitMQ 15672, Redis 6379, Temporal 7233, Dashboard API 5001, Frontend 5173\n\n## SSH Key\n\nWork repos use `~/.ssh/id_work`. Clone with:\n```bash\nGIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_work\" git clone git@github.com:activecomply/{repo}.git\n```\n",
+  "aa-temporal": "# Playbook: Temporal Workflows\n\nTemporal runs in Docker. All CLI commands go through the container.\n\n## Common Commands\n\n```bash\n# List recent workflows\ndocker exec temporal temporal workflow list --limit 20\n\n# Failed workflows\ndocker exec temporal temporal workflow list --query \"ExecutionStatus='Failed'\" --limit 10\n\n# View specific workflow\ndocker exec temporal temporal workflow show -w <workflow-id>\n\n# Follow workflow history\ndocker exec temporal temporal workflow show -w <workflow-id> --follow\n\n# Worker status\ndocker exec temporal temporal task-queue describe --task-queue <queue-name>\n\n# Schedules\ndocker exec temporal temporal schedule list\ndocker exec temporal temporal schedule describe --schedule-id <id>\n\n# Health check\ndocker exec temporal temporal server health\n```\n\n## Tips\n\n- Default namespace is `default` \u2014 add `--namespace <ns>` if different\n- Add `--output json` for structured debugging output\n- Worker services live in `activecomply.workflows.host`\n",
+  "aa-testing": "# Playbook: Testing\n\n## Test Framework\n\n- xUnit with `ITestOutputHelper` for logging\n- Test fakes in `test_fakes/` folder (NOT mocking frameworks like Moq)\n- Traits: `[Trait(\"Category\", \"Unit\")]` or `[Trait(\"Category\", \"Integration\")]`\n- Helpers: `TestHelpers.cs`, `MoreAssert.cs`, `FakeEmailService`, `FakeUserStore` in `activecomply.common.tests`\n\n## Writing Integration Tests\n\n1. Seed expectation data in Elasticsearch\n2. Reference pattern: `src/activecomply.common.tests/services/AccountServiceTests.cs`\n3. Test against the **service** class (not controller)\n4. ES test client connects to `localhost:9200`\n5. Generate unique strings: `\"account-\" + TestHelpers.GenerateRandomString()`\n\n## Running Tests\n\n```bash\ndotnet test activecomply.sln                    # All tests\ndotnet test profiles.sln                        # All profiles tests\ndotnet test path/to/project.csproj              # One project\ndotnet test path/to.csproj --filter \"FullyQualifiedName=NS.Class.Method\"  # One test\n```\n\nAlways specify `.csproj` path to avoid \"multiple project\" errors.\n\n## When Controller Tests Are Needed\n\nOnly for exceptional cases. Use `WebApplicationFactory` and mock all dependencies. Keep concise.\n\n## Common Mistakes\n\n- Using Moq \u2192 Use test fakes instead\n- Testing controllers by default \u2192 Test services\n- Forgetting `[Trait(\"Category\", ...)]` \u2192 Always tag tests\n- Not seeding ES data first \u2192 Integration tests need data\n",
+  "aa-ref-code-style": "# Reference: Code Style (C# / .NET)\n\n## Language Features\n\n- C# 10+ with nullable reference types enabled\n- File-scoped namespaces\n- `activecomply.*` prefix for all namespaces\n- String interpolation over concatenation\n- `ArgumentNullException.ThrowIfNull()` for null checks\n- ReadOnlySpan<char> for performance-sensitive string operations\n- Generic collections + LINQ for data manipulation\n\n## Conventions\n\n- **Enums**: Always decorate with `[JsonConverter(typeof(StringEnumConverter))]`\n- **DI**: New services must be registered in `Program.cs` (`services.AddTransient<IService, ServiceImpl>()`)\n- **Extensions**: Place in `activecomply.extensions` namespace\n- **Class layout**: Public methods first, private methods at bottom, grouped by functionality\n\n## Namespace Separation\n\n```\nactivecomply.sln          profiles.sln\n  \u251c\u2500\u2500 activecomply.*        \u251c\u2500\u2500 profiles.*\n  \u251c\u2500\u2500 can use common        \u251c\u2500\u2500 can use activecomply.*\n  \u2514\u2500\u2500 CANNOT use profiles.* \u2514\u2500\u2500 profiles.api uses GraphQL (NOT REST)\n```\n\nShared code goes in `activecomply.common`. If profiles-specific code is needed in activecomply, create a duplicate in the activecomply namespace.\n\n## API Routing\n\n- **No `/api/` prefix** \u2014 Controllers use `[Route(\"[controller]\")]`\n- URLs are lowercase (configured in `RouteConfiguration.cs`)\n- Example: `DocReviewsController` \u2192 `GET /docreviews/{id}`\n\n## Profiles Solution Specifics\n\n- **GraphQL only** (NOT REST) \u2014 no traditional controllers in `profiles.api`\n- Schema: `profiles.graphql`, centralized `Mutations.cs` (~101K LOC)\n- Uses **Google Pub/Sub** for messaging (not Temporal)\n- Graph data model: `Node`, `GraphService`, `GraphRepo`\n",
+  "aa-ref-environment-map": "# Reference: Environment Map\n\n## Machines\n\n```\njacob-main-mint (local dev \u2014 AMD Ryzen 7 7700X, 32GB DDR5, RTX 2060 SUPER)\n  \u251c\u2500\u2500 ~/activecomply-api       .NET 8 backend\n  \u251c\u2500\u2500 ~/dashboard-app          React frontend (EUI)\n  \u251c\u2500\u2500 ~/survey-app             React survey app (Firebase)\n  \u251c\u2500\u2500 ~/dev-agents             Multi-project orchestration\n  \u251c\u2500\u2500 ~/developer_bootstrap    Docker Compose (ES, Redis, RabbitMQ, Temporal)\n  \u251c\u2500\u2500 ~/thezeitgeistexperiment Personal project (AWS serverless)\n  \u251c\u2500\u2500 ~/agentdepo              New product mockups\n  \u251c\u2500\u2500 ~/inkmans_brain          Symlink \u2192 sshfs mount to agent-house\n  \u2514\u2500\u2500 ~/mnt/agent-house/...    sshfs mount (fragile, drops periodically)\n\n192.168.1.101 (agent-house \u2014 remote Linux Mint)\n  \u251c\u2500\u2500 ~/inkmans_brain/         Bot engine, prompts, scripts, creds\n  \u251c\u2500\u2500 Chrome (Flatpak)         Browser automation\n  \u2514\u2500\u2500 Cron jobs per worker     inkman-bluesky, inkman-historian, etc.\n```\n\n## Local Docker Services (developer_bootstrap)\n\n| Service | Port | Notes |\n|---------|------|-------|\n| Elasticsearch | 9200 | Password: letmein123 |\n| Kibana | 5601 | |\n| RabbitMQ Management | 15672 | |\n| Redis | 6379 | |\n| Temporal | 7233 | CLI: `docker exec temporal temporal ...` |\n\n## Application Ports\n\n| App | Port | Start Command |\n|-----|------|--------------|\n| Dashboard API (HTTP) | 5001 | `dotnet run --project src/activecomply.api.dashboard` |\n| Dashboard API (HTTPS) | 7001 | Same with HTTPS redirect |\n| Dashboard Frontend | 5173 | `cd ~/dashboard-app && yarn start` |\n| Survey App | 3000 | `cd ~/survey-app/survey-app && npm start` |\n\n## GCP Environments\n\n| Env | Project ID | K8s Cluster | Zone | Namespace |\n|-----|-----------|-------------|------|-----------|\n| Test | `activecomply-app-dev` | `activecomply-dev` | `us-central1-a` | `test` |\n| Prod | `activecomply-app` | `activecomply-prod` | `us-central1-a` | default |\n| Prod (workflows) | `activecomply-app` | `ac` | `us-central1` (regional) | default |\n\n## Credential Locations\n\n| Credential | Location |\n|-----------|----------|\n| ES API Key | `src/activecomply.cli/appsettings.Development.json` \u2192 `Elasticsearch.ApiKey` |\n| ES Cached Base64 | `.claude/elasticsearch-key.local.json` |\n| GCP Service Account | `~/jacob_aaronson_service_account.json` |\n| SSH (work repos) | `~/.ssh/id_work` |\n| SSH (personal repos) | Default key |\n| Atlassian Cloud ID | `559a76c5-7f47-4832-ab40-bd6462c90c6c` |\n| Test env account ID | `e6593184d34648e981c8fd8c84084a2f` |\n| Test env creds | `CLAUDE.local.md` (per-developer, not in source control) |\n\n## Full Stack Startup Sequence\n\n```bash\n# 1. Docker services\ncd ~/developer_bootstrap && docker compose up -d\n\n# 2. Backend API\nGOOGLE_APPLICATION_CREDENTIALS=~/jacob_aaronson_service_account.json \\\nASPNETCORE_ENVIRONMENT=Development \\\ndotnet run --project ~/activecomply-api/src/activecomply.api.dashboard\n\n# 3. Frontend\ncd ~/dashboard-app && yarn start\n\n# 4. Access at https://localhost:5173 (frontend proxies to API)\n```\n\n## VPN Requirement\n\nAll GKE clusters use `--internal-ip`. If kubectl or gcloud commands timeout \u2192 connect to VPN first.\n",
+  "aa-ref-es-conventions": "# Reference: Elasticsearch Conventions\n\n## Index Template Conventions\n\n- **Location**: `elasticsearch/templates/` (NOT `profiles/elasticsearch/` \u2014 legacy)\n- **File extension**: `.es` with plural index names (e.g., `accounts.es`, `docreviews.es`)\n- **Never** use `-template` suffix (e.g., ~~`account-template.json`~~)\n\n### Template Structure\n\n```json\nPOST _index_template/{template_name}\n{\n  \"index_patterns\": [\"template_name*\"],\n  \"composed_of\": [\"data_content\"],\n  \"template\": {\n    \"mappings\": {\n      \"dynamic\": false,\n      \"properties\": {\n        \"id\": { \"type\": \"keyword\" },\n        \"accountId\": { \"type\": \"keyword\" },\n        \"created\": { \"type\": \"date\" },\n        \"updated\": { \"type\": \"date\" },\n        \"status\": { \"type\": \"keyword\" },\n        \"isActive\": { \"type\": \"boolean\" },\n        \"count\": { \"type\": \"integer\" }\n      }\n    }\n  }\n}\n```\n\n### Field Type Rules\n\n| Use Case | Type | Notes |\n|----------|------|-------|\n| IDs, enums, exact match | `keyword` | |\n| Timestamps | `date` | |\n| True/false | `boolean` | |\n| Counters | `integer` | |\n| Sensitive data (tokens, passwords) | keyword + `\"index\": false` | Prevents indexing |\n\n### Naming\n\n- **All field names are camelCase** \u2014 matches C# JSON serializer output\n  - `accountId` NOT `account_id`\n  - `requiresHumanApproval` NOT `requires_human_approval`\n  - `updatedAt` NOT `updated_at`\n- Always set `dynamic: false` to prevent automatic field mapping\n- Use `composed_of: [\"data_content\"]` or `[\"data_content\", \"lowercase_keyword_normalizer\"]`\n\n## Common Indices\n\n| Index | Purpose |\n|-------|---------|\n| `monitored_profiles` | Social media profiles under compliance monitoring |\n| `linkedin_posts` | Archived LinkedIn posts |\n| `social_profiles` | Social media profile metadata |\n\n## Reindex Naming\n\nTemporary indices during reindex MUST use `reindex_` prefix:\n- `reindex_platform_usertokens` (temp) \u2192 `platform_usertokens` (final)\n- Reason: `reindex_` prefix won't match template patterns, avoiding automatic field analysis on temp data\n",
+  "aa-ref-team-context": "# Reference: Team Context\n\n## How Work Flows\n\nJacob receives direction from senior/lead engineers and implements. Claude is the execution partner.\n\nTypical flow:\n1. Boss or tech lead (Ian, Justin, Austin) gives direction via Jira comment, email, or Slack\n2. Jacob pastes the direction into Claude Code\n3. Claude brainstorms approach \u2192 Jacob approves \u2192 Claude implements\n4. Jacob asks Claude to create PR, sometimes add Jira comment\n\n## Team Members (referenced in conversations)\n\n| Person | Role (inferred) | Context |\n|--------|----------------|---------|\n| Boss (unnamed) | Engineering lead | Gives ticket direction, reviews architecture decisions |\n| Ian Canida | Senior engineer | Provides technical guidance on implementation |\n| Justin | Engineer | Reviews PRs, provides code feedback |\n| Austin | Engineer | Creates PRs that Jacob reviews |\n\n## PR Review Pattern\n\n- Jacob reviews others' PRs by asking Claude: \"should I approve this?\"\n- Claude analyzes the PR and gives recommendation\n- Jacob makes the final call\n\n## Jira Workflow\n\n- Project key: `DEV-XXX`\n- Atlassian instance: `activecomply.atlassian.net`\n- Jacob reads tickets, brainstorms with Claude, implements, then comments back on the ticket\n- Boss sometimes adds context via Jira comments with specific technical direction\n",
+  "th-claude": "# CLAUDE.md\n\n**The Zeitgeist Experiment** \u2014 A living repository of collective opinion. Users email responses to topic bubbles, AI scores and ranks them. No accounts, no feeds, no likes. Email is the primary entry point.\n\nDomains: `thezeitgeistexperiment.com`, `zeitgeistexperiment.com` (redirects)\n\n## Stack\n\n- **Language:** TypeScript, Node.js 22.x\n- **Infra:** AWS (Lambda, S3, SQS, SES, EventBridge, CloudFront, DynamoDB)\n- **IaC:** CloudFormation (NOT CDK, NOT Terraform)\n- **AI:** Claude via Amazon Bedrock for scoring, summarization, moderation\n- **CI/CD:** GitHub Actions \u2192 deploy to AWS\n\n## Hard Rules\n\n1. **CloudFormation only** \u2014 No CDK, no Terraform\n2. **Plain text email** \u2014 No HTML emails (deliberate design choice)\n3. **Anti-convention design is intentional** \u2014 Serif fonts, no color, no buttons, no tracking. Do not \"fix\" these.\n4. **No API Gateway** \u2014 Website reads static JSON from S3 via CloudFront\n5. **Node.js 22.x minimum** \u2014 Don't use older runtimes\n6. **Git: push to main** \u2014 No feature branches. Ship directly to main.\n\n## Build & Deploy\n\n```\nnpm install && npm run build && npm test\ngit push origin main                    # Triggers GitHub Actions deploy\n```\n\nManual CloudFormation: `aws cloudformation deploy --template-file infrastructure/template.yaml --stack-name zeitgeist-dev --capabilities CAPABILITY_NAMED_IAM`\n\n## Before You Start\n\n| Task | Read First |\n|------|-----------|\n| Lambda changes or new Lambda | `docs/playbooks/lambda-workflow.md` |\n| Seeding or reindexing data | `docs/playbooks/seed-reindex.md` |\n| Email flow changes | `docs/playbooks/email-system.md` |\n| Running tests | `docs/playbooks/testing.md` |\n| AWS infrastructure changes | `docs/playbooks/aws-infra.md` |\n| Frontend / bubble map changes | `docs/playbooks/frontend.md` |\n\n## Key Documentation\n\n- `PROJECT_SPEC.md` \u2014 Technical specification (keep updated)\n- `known-bugs/` \u2014 Numbered bug reports with status\n- `docs/generated/email-system.md` \u2014 Auto-generated (run `npm run docs:emails`)\n\n## AWS Access\n\nIAM user `claude-readonly` with `ZeitgeistReadOnly` + `claude-seed-policy`. Region: `us-east-1`. When permission denied: tell user the exact action/resource \u2014 they add it manually in console.\n\n## Do Not\n\n- Add accent colors, gradients, or decorative elements\n- Create APIs for reading thread data (that's direct S3 via CloudFront)\n- Add npm packages without considering Lambda bundle size\n- Implement outbound email question distribution (post-MVP)\n",
+  "th-aws-infra": "# Playbook: AWS Infrastructure\n\n## CloudFormation\n\nAll infrastructure is in `infrastructure/template.yaml`. YAML only, not JSON.\n\n```bash\n# Validate\naws cloudformation validate-template --template-body file://infrastructure/template.yaml\n\n# Deploy\naws cloudformation deploy \\\n  --template-file infrastructure/template.yaml \\\n  --stack-name zeitgeist-dev \\\n  --capabilities CAPABILITY_NAMED_IAM\n```\n\nNaming conventions: Logical IDs in PascalCase, descriptions on all resources, `!Ref` and `!GetAtt` over hardcoded values.\n\n## IAM\n\n- `claude-readonly` user \u2014 managed **manually in AWS console** (NOT in CloudFormation)\n- Policies: `ZeitgeistReadOnly` + `claude-seed-policy`\n- Policy JSON source: `infrastructure/claude-seed-policy.json`\n- To update: edit the JSON, paste into AWS console manually\n\nWhen a permission error occurs: report the exact action and resource denied. The user adds it manually.\n\n## Adding AWS Resources\n\n1. Add to `infrastructure/template.yaml`\n2. Validate template\n3. Deploy via CloudFormation or push (GitHub Actions deploys)\n4. Update PROJECT_SPEC.md Architecture section\n5. If new S3 bucket: document in S3 Buckets table\n\n## Checking Resources\n\n```bash\n# Lambda logs\naws logs tail /aws/lambda/zeitgeist-{name}-dev --follow\n\n# S3 contents\naws s3 ls s3://zeitgeist-public-{accountId}/\n\n# DynamoDB scan\naws dynamodb scan --table-name zeitgeist-threads-dev --max-items 5\n\n# SQS queue depth\naws sqs get-queue-attributes --queue-url {url} --attribute-names ApproximateNumberOfMessages\n```\n\n## Do Not\n\n- Use CDK or Terraform \u2014 CloudFormation only\n- Modify IAM via CloudFormation \u2014 it's manual\n- Add resources without updating PROJECT_SPEC.md\n",
+  "th-email-system": "# Playbook: Email System\n\n## Inbound Flow\n\n```\nUser sends email \u2192 SES receives \u2192 SNS notification \u2192 SQS queue \u2192 response-processor Lambda\n```\n\nEmail address determines routing:\n- `{thread-id}@thezeitgeistexperiment.com` \u2192 thread response handler\n- `thezeitgeistbot@...` \u2192 new topic submission\n\n## Outbound Notifications\n\n4 types:\n1. `question_live` \u2014 Your topic is now live\n2. `new_response` \u2014 Someone responded to your topic\n3. `ranking_confirmation` \u2014 Your response was ranked\n4. `settings` \u2014 Settings/preferences changes\n\nSent via `email-dispatcher` Lambda. **Plain text only** \u2014 no HTML emails (deliberate design choice).\n\n## Key Constants\n\n| Constant | Location | Purpose |\n|----------|----------|---------|\n| `FROM_ADDRESS` | response-processor | Outbound sender address |\n| `SITE_URL` | response-processor | Link base in emails |\n| `DOMAIN` | response-processor | Email domain |\n| `IGNORE_ADDRESSES` | response-processor | Addresses to skip |\n| `DUPLICATE_THRESHOLD` | response-processor | Similarity cutoff for dedup |\n\n## Regenerating Email Docs\n\n```bash\nnpm run docs:emails          # Regenerate docs/generated/email-system.md\nnpm run docs:emails:check    # CI mode \u2014 fails if docs are stale\n```\n\nThe generator reads 6 source files via regex and produces markdown. Run after any email flow change.\n\n## Changing Email Templates\n\nEdit in `lambdas/email-dispatcher/`. Update PROJECT_SPEC.md Email Flows section if structure changes.\n\n## Common Issues\n\n- Notification throttle in `response-path.ts` \u2014 may suppress expected emails\n- SES receiving rules only process `@thezeitgeistexperiment.com` domain\n- SNS topic connects SES to SQS \u2014 check SNS subscriptions if emails aren't processing\n",
+  "th-frontend": "# Playbook: Frontend / Bubble Map\n\n## Architecture\n\nThe entire frontend is **one file**: `website/index.html` (~1800 lines, all CSS and JS inline).\n\nNo component system, no build pipeline for the frontend. All changes require editing this monolith.\n\n## Canvas Rendering\n\n- Bubble physics: position lerping, alpha transitions\n- Camera system: `camX/camY`, `targetCamX/targetCamY`, `detailLevel`\n- Bubble state machine: layout targets, search alpha, fade states\n- Rendering loop runs continuously via `requestAnimationFrame`\n\n## URL Parameters\n\n- `?thread={thread-id}` \u2014 Opens map centered on that thread's bubble\n- This has been a recurring source of bugs \u2014 the interaction between bubble map initialization, camera positioning, and thread detail view is fragile\n\n## Visual Testing\n\nUse the **Ralph Wiggum technique** \u2014 iterative Puppeteer screenshot loop:\n1. Take screenshot of live site\n2. Review visually\n3. Make change, push, wait for deploy\n4. Screenshot again, compare\n\nTests use **live URL** (data is in S3/CloudFront), not a local server.\n\n## Common Issues\n\n- **Ghost bubbles on zoom out** \u2014 bubbles with `r < 1` stuck in dead zone\n- **?thread= showing wrong view** \u2014 map-centered vs thread-only view confusion\n- **Search feature** \u2014 keyboard-navigable, canvas dimming, dropdown results\n\n## Design Rules\n\n- Monochromatic dark palette (see `docs/reference/visual-design.md`)\n- Serif fonts (Georgia) \u2014 intentional, do not change\n- No accent colors, gradients, or decorative elements\n- All animations respect `prefers-reduced-motion: reduce`\n",
+  "th-lambda-workflow": "# Playbook: Lambda Development\n\n## Current Lambdas\n\n| Lambda | Purpose | Trigger |\n|--------|---------|---------|\n| response-processor | Parse emails, score, create threads | SQS (from SES\u2192SNS) |\n| email-dispatcher | Send confirmation/notification emails | Direct invoke |\n| ui-index-rebuilder | Rebuild index.json from DynamoDB | EventBridge (every 60s) |\n| vector-embedder-builder | Embeddings, coordinates, category tree | EventBridge (daily 4am UTC) |\n| email-test | Test email send | Manual invoke |\n\n## Adding a New Lambda\n\n1. Create `lambdas/{lambda-name}/` directory\n2. Create `index.ts` with handler export\n3. Create `tsconfig.json` extending `../../tsconfig.base.json`\n4. Add build script to `package.json`\n5. Add typecheck to `package.json` typecheck script\n6. Add to CloudFormation `infrastructure/template.yaml`\n7. Update `PROJECT_SPEC.md` Architecture section\n\n## Testing a Lambda\n\n```bash\n# Invoke directly\naws lambda invoke --function-name zeitgeist-{name}-dev /dev/stdout\n\n# With payload\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \\\n  --payload '{\"threadIds\":[\"thread-1\"]}' /dev/stdout\n```\n\n## Build\n\n```bash\nnode esbuild.config.mjs   # Builds all lambdas to dist/\n```\n\n## Deploy Cycle\n\n1. Make changes \u2192 `npm run build` \u2192 `npm test`\n2. `git push origin main` \u2192 GitHub Actions deploys\n3. Check build: `gh run list --limit 3`\n4. If green and seeds needed: run seed scripts\n5. Verify on live site\n",
+  "th-seed-reindex": "# Playbook: Seed Data & Reindexing\n\n## Seed Scripts\n\n```bash\n# Short topics (300 one-liners)\nnpm run seed:topics [--dry-run] [--delay <ms>]\n\n# Short responses (embedding-matched)\nnpm run seed:responses [--dry-run] [--delay <ms>]\n\n# Long topics (100 essay-length)\nnpm run seed:long-topics [--dry-run] [--delay <ms>]\n\n# Long responses (text-matched)\nnpm run seed:long-responses [--dry-run] [--delay <ms>]\n\n# Generate new responses via Claude API\nANTHROPIC_API_KEY=sk-... npm run seed:generate\nANTHROPIC_API_KEY=sk-... npm run seed:generate-long\nANTHROPIC_API_KEY=sk-... npm run seed:generate-long-responses\n```\n\n## Reindex / Re-embed\n\n```bash\n# Full reindex (all threads + category tree)\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev --payload '{}' /dev/stdout\n\n# Specific threads only (no category rebuild)\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \\\n  --payload '{\"threadIds\":[\"thread-id-1\",\"thread-id-2\"]}' /dev/stdout\n```\n\n## After Model/Scoring Changes\n\n1. Delete old event bucket data (if needed)\n2. Run seed scripts\n3. Check topic count (should be ~300, not ~80)\n4. Run reindex lambda\n5. Verify on live site\n\n## Common Mistake\n\nDUPLICATE_THRESHOLD too low \u2192 collapses unique topics. Each seed topic IS intentionally different. If topics are being collapsed, raise the threshold, don't assume duplicates.\n",
+  "th-testing": "# Playbook: Testing (Zeitgeist)\n\n## Unit Tests\n\n```bash\nnpm test          # Vitest\n```\n\n## Integration Tests\n\n```bash\nINTEGRATION=true vitest run   # Hits real Bedrock + S3 Vectors\n```\n\nIntegration tests are NOT run in normal CI. They require AWS credentials.\n\n## Smoke Tests\n\nScript exercises full email flow with settings changes. Located in `scripts/`.\n\n## Regression Tests\n\nAI-generated reports using himalaya CLI for email send/receive verification. Gmail test account credentials at `~/inkmans_brain`.\n\n## Visual Testing (Ralph Wiggum Technique)\n\nIterative Puppeteer screenshot loop for UI testing:\n1. Take screenshot of live site\n2. Review visually\n3. Make change\n4. Screenshot again\n5. Compare\n\nTests use live URL (data in S3/CloudFront), not local server.\n\n## CI Pipeline\n\nGitHub Actions runs: build \u2192 typecheck \u2192 tests \u2192 `docs:emails:check` \u2192 deploy\n\nThe `docs:emails:check` step verifies auto-generated email docs are current. Run `npm run docs:emails` locally to regenerate.\n",
+  "th-ref-aws-resources": "# Reference: AWS Resources\n\n## Region: us-east-1\n\n## Lambda Functions\n\n| Function | Purpose | Trigger |\n|----------|---------|---------|\n| `zeitgeist-response-processor-dev` | Parse inbound emails, score responses, manage threads | SQS |\n| `zeitgeist-email-dispatcher-dev` | Send confirmation/notification emails | Direct invoke |\n| `zeitgeist-ui-index-rebuilder-dev` | Rebuild public index.json from DynamoDB | EventBridge (60s) |\n| `zeitgeist-vector-embedder-builder-dev` | Embeddings, coordinates, category tree | EventBridge (daily 4am UTC) |\n| `zeitgeist-email-test-dev` | Test email sending | Manual invoke |\n| `zeitgeist-bedrock-test-dev` | Test Bedrock integration | Manual invoke |\n\n## S3 Buckets\n\n| Bucket | Access | Content |\n|--------|--------|---------|\n| `zeitgeist-website-{env}-{accountId}` | Private (CloudFront OAC) | Static HTML/CSS/JS |\n| `zeitgeist-public-{accountId}` | Private (CloudFront OAC) | index.json, categories.json, threads/*.json, users/*.json |\n| `zeitgeist-events-{accountId}` | Private (Lambda only, deny-delete) | Immutable event log: `events/{date}/{timestamp}_{id}.json` |\n| `zeitgeist-vectors-dev` | Private | Vector embeddings index |\n\n## DynamoDB Tables\n\n| Table | PK | Purpose |\n|-------|-----|---------|\n| `zeitgeist-threads-{env}` | `thread_id` (S) | Thread metadata \u2014 source of truth for index.json |\n| `zeitgeist-profiles-{env}` | `email_hash` (S) | User profiles with email addresses |\n\n## Email Pipeline\n\n```\nInbound email \u2192 SES \u2192 SNS \u2192 SQS \u2192 response-processor Lambda\n  \u2192 DynamoDB (threads/profiles)\n  \u2192 S3 (thread JSON, event log)\n  \u2192 email-dispatcher Lambda (confirmations)\n```\n\n## Email Addresses\n\n| Address | Purpose |\n|---------|---------|\n| `*@thezeitgeistexperiment.com` | Inbound (SES receiving) |\n| `thezeitgeistbot@thezeitgeistexperiment.com` | Outbound sender |\n| `albert.g.inkman@gmail.com` | AI seed user |\n| `jakeaaronson@gmail.com` | Owner |\n\n## Email Notification Types\n\n1. `question_live` \u2014 Your topic is now live\n2. `new_response` \u2014 Someone responded to your topic\n3. `ranking_confirmation` \u2014 Your response was ranked\n4. `settings` \u2014 Settings/preferences changes\n\n## IAM\n\n- `claude-readonly` user \u2014 managed manually in AWS console (NOT CloudFormation)\n- Policies: `ZeitgeistReadOnly` + `claude-seed-policy`\n- Policy JSON: `infrastructure/claude-seed-policy.json` (paste into console manually)\n- When permission denied: report exact action + resource \u2192 user adds in console\n",
+  "th-ref-project-structure": "# Reference: Project Structure\n\n## Key Paths\n\n| Path | Purpose |\n|------|---------|\n| `website/index.html` | Entire frontend (~1800 lines, canvas bubble map, all inline) |\n| `lambdas/response-processor/` | Core backend (email-parser.ts, response-path.ts, topic-path.ts, embeddings.ts, user-ops.ts) |\n| `lambdas/email-dispatcher/index.ts` | Email templates and sending |\n| `lambdas/ui-index-rebuilder/` | Rebuilds public index.json (EventBridge, 60s) |\n| `lambdas/vector-embedder-builder/` | Embeddings, coordinates, category tree (daily) |\n| `infrastructure/template.yaml` | CloudFormation/SAM template |\n| `infrastructure/claude-seed-policy.json` | IAM policy (manual console paste) |\n| `known-bugs/` | Numbered bug reports (001-008+) |\n| `docs/generated/email-system.md` | Auto-generated email docs (`npm run docs:emails`) |\n| `scripts/seed/` | Seed data scripts and JSON files |\n| `brainstorm/` | Old spec, question lists, email samples |\n\n## Frontend Architecture\n\nSingle `website/index.html` with:\n- Canvas rendering loop with bubble physics (position lerping, alpha transitions)\n- Camera system (camX/camY, targetCamX/targetCamY, detailLevel)\n- Bubble state machine (layout targets, search alpha, fade states)\n- All CSS and JS inline \u2014 no component system, no build pipeline for frontend\n- Modifications require editing this monolithic file\n\n## Build\n\n```bash\nnode esbuild.config.mjs    # Builds all lambdas to dist/\nnpm run build               # Full build (includes typecheck)\n```\n\n## CloudFormation\n\n```yaml\n# YAML only, not JSON\n# Logical IDs in PascalCase\n# Descriptions on all resources\n# !Ref and !GetAtt over hardcoded values\n```\n\nTemplate: `infrastructure/template.yaml`\nValidate: `aws cloudformation validate-template --template-body file://infrastructure/template.yaml`\n",
+  "th-ref-visual-design": "# Reference: Visual Design\n\n## Palette (Monochromatic Dark)\n\n| Element | Color |\n|---------|-------|\n| Background | `#09090b` (Zinc 950) |\n| Heading | `#e4e4e7` |\n| Body text | `#d4d4d8` |\n| Description | `#a1a1aa` |\n| Tagline | `#71717a` |\n| Muted labels | `#52525b` |\n| Dividers | `#27272a` |\n\nNo accent colors. Luminance alone creates hierarchy.\n\n## Typography\n\nSerif font stack (Georgia). This is intentional \u2014 do not switch to sans-serif.\n\n## Animations\n\n- **Bubble lerp**: Position/size/opacity interpolate smoothly (`LERP_SPEED = 0.1`)\n- **Breathe + shimmer**: Subtle radius oscillation + traveling perimeter highlight\n- **Morph open/close**: Bubble \u2192 full-width detail header (`.5s cubic-bezier`), reverses on back\n- **Onboarding fade-in**: Blur-to-clear on instruction overlay\n- All respect `prefers-reduced-motion: reduce`\n\n## Anti-Convention Choices (INTENTIONAL)\n\nThese look like mistakes to outsiders but are deliberate:\n- Serif fonts (not sans-serif)\n- No color (monochromatic)\n- Plain text email (not HTML)\n- No buttons (mailto: links)\n- No tracking\n- No exclamation marks\n\nSee `PROJECT_SPEC.md` sections: \"The Anti-Convention Identity\", \"Design Is Not\", \"Design Reflects Values\"\n\n## Voice & Tone\n\nShort, declarative, no hype. \"Growing collective thought.\" \u2014 not \"We're building an exciting platform!\"\n\nEm dashes over parentheses. Write like a thoughtful person, not a marketing team.\n"
+};
+const SNAPSHOTS = [
+  {
+    "id": "backup-2026-03-16",
+    "type": "backup",
+    "timestamp": "2026-03-16T16:42:00Z",
+    "level": "full",
+    "args": "Original pre-pyramid CLAUDE.md files. Created before any pyramid restructuring. Restore with ./rollback.sh",
+    "files": 11,
+    "file_list": [
+      {
+        "path": "meta.json",
+        "lines": 1
+      },
+      {
+        "path": "settings.json",
+        "lines": 20
+      },
+      {
+        "path": "settings.local.json",
+        "lines": 106
+      },
+      {
+        "path": "memory/hardware.md",
+        "lines": 17
+      },
+      {
+        "path": "memory/MEMORY.md",
+        "lines": 7
+      },
+      {
+        "path": "memory/project_agentdepo.md",
+        "lines": 39
+      },
+      {
+        "path": "memory/crash-report-2026-03-03.md",
+        "lines": 75
+      },
+      {
+        "path": "claude-md-files/activecomply-api_CLAUDE.md",
+        "lines": 390
+      },
+      {
+        "path": "claude-md-files/dashboard-app_CLAUDE.md",
+        "lines": 398
+      },
+      {
+        "path": "claude-md-files/dev-agents_CLAUDE.md",
+        "lines": 503
+      },
+      {
+        "path": "claude-md-files/thezeitgeistexperiment_CLAUDE.md",
+        "lines": 295
+      }
+    ],
+    "projects": [
+      "activecomply-api",
+      "dashboard-app",
+      "dev-agents",
+      "thezeitgeistexperiment"
+    ],
+    "path": "/home/jacob/mycelium/backup-2026-03-16"
+  }
+];
+
+// ── Markdown Renderer ──
+function renderMarkdown(md) {
+  let h = md;
+  // Fenced code blocks
+  h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+    '<pre><code>' + esc(code.trim()) + '</code></pre>');
+  // Tables
+  h = h.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)*)/gm, (_, hdr, sep, body) => {
+    const ths = hdr.split('|').filter(c=>c.trim()).map(c=>'<th>'+inl(c.trim())+'</th>').join('');
+    const rows = body.trim().split('\n').map(r => {
+      const tds = r.split('|').filter(c=>c.trim()).map(c=>'<td>'+inl(c.trim())+'</td>').join('');
+      return '<tr>'+tds+'</tr>';
+    }).join('');
+    return '<table><thead><tr>'+ths+'</tr></thead><tbody>'+rows+'</tbody></table>';
+  });
+  // Headers
+  h = h.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // Blockquotes
+  h = h.replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+  // HR
+  h = h.replace(/^---$/gm, '<hr>');
+  // Nested lists: indent-based
+  h = h.replace(/^  - (.+)$/gm, '<sub-li>$1</sub-li>');
+  h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+  h = h.replace(/<sub-li>(.*?)<\/sub-li>/g, '<li style="margin-left:1.2rem">$1</li>');
+  h = h.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  // Ordered lists
+  h = h.replace(/^\d+\. (.+)$/gm, '<oli>$1</oli>');
+  h = h.replace(/((?:<oli>.*<\/oli>\n?)+)/g, (m) => {
+    return '<ol>' + m.replace(/<oli>(.*?)<\/oli>/g, '<li>$1</li>') + '</ol>';
+  });
+  // Paragraphs (lines that aren't already wrapped)
+  h = h.replace(/^(?!<[hupoltbs]|$|\s*$)(.+)$/gm, '<p>$1</p>');
+  // Inline
+  h = inl(h);
+  // Clean up empty paragraphs
+  h = h.replace(/<p>\s*<\/p>/g, '');
+  return h;
+}
+
+function inl(t) {
+  t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  t = t.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  return t;
+}
+
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function lvlName(l) {
+  return l === 0 ? 'Level 0 — Apex' : l === 1 ? 'Level 1 — Playbook' : l === 2 ? 'Level 2 — Reference' : '';
+}
+function lvlClass(l) {
+  return l === 0 ? 'l0' : l === 1 ? 'l1' : l === 2 ? 'l2' : '';
+}
+
+// ── Build Sidebar ──
+function buildSidebar() {
+  const sb = document.getElementById('sidebar');
+  let html = '';
+  for (const [key, proj] of Object.entries(DOCS)) {
+    html += '<div class="project-group">';
+    html += '<div class="project-name">' + proj.name + '</div>';
+    let curLevel = -1;
+    for (const doc of proj.docs) {
+      if (doc.level !== null && doc.level !== curLevel) {
+        curLevel = doc.level;
+        html += '<div class="level-label ' + lvlClass(doc.level) + '">' + lvlName(doc.level) + '</div>';
+      }
+      const lines = CONTENT[doc.id] ? CONTENT[doc.id].split('\n').length : 0;
+      const lclass = doc.level === 0 ? ' l0-item' : '';
+      html += '<div class="nav-item' + lclass + '" data-id="' + doc.id + '" onclick="showDoc(\''+doc.id+'\')"><span>' + doc.title + '</span>';
+      if (doc.path) html += '<span class="lines">' + lines + 'L</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Snapshots section
+  if (SNAPSHOTS && SNAPSHOTS.length > 0) {
+    html += '<div class="snap-group">';
+    html += '<div class="snap-label" onclick="toggleSnaps()"><span>RESTORE POINTS</span><span class="count">' + SNAPSHOTS.length + '</span></div>';
+    html += '<div class="snap-list" id="snap-list">';
+    for (const snap of SNAPSHOTS) {
+      const typeClass = snap.type === 'backup' ? 'backup' : 'reflect';
+      const typeLabel = snap.type === 'backup' ? 'backup' : 'L' + snap.level;
+      const date = snap.timestamp.substring(0, 10);
+      html += '<div class="snap-item" data-snap="' + snap.id + '" onclick="showSnap(\'' + snap.id + '\')">';
+      html += '<div><span class="snap-date">' + date + '</span><span class="snap-type ' + typeClass + '">' + typeLabel + '</span></div>';
+      html += '<div class="snap-detail">' + snap.files + ' files' + (snap.args ? ' — ' + snap.args.substring(0, 40) : '') + '</div>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  sb.innerHTML = html;
+}
+
+function toggleSnaps() {
+  const list = document.getElementById('snap-list');
+  if (list) list.classList.toggle('open');
+}
+
+// ── Show Snapshot Detail ──
+function showSnap(id) {
+  document.querySelectorAll('.nav-item, .snap-item').forEach(el => el.classList.remove('active'));
+  const active = document.querySelector('.snap-item[data-snap="'+id+'"]');
+  if (active) active.classList.add('active');
+
+  const snap = SNAPSHOTS.find(s => s.id === id);
+  if (!snap) return;
+
+  const ct = document.getElementById('content');
+  const isBackup = snap.type === 'backup';
+  const typeLabel = isBackup ? '<span class="snap-type backup">full backup</span>' : '<span class="snap-type reflect">reflect L' + snap.level + '</span>';
+  const date = snap.timestamp.length >= 10 ? snap.timestamp.substring(0, 10) : snap.timestamp;
+  const time = snap.timestamp.length >= 19 ? snap.timestamp.substring(11, 19) : '';
+
+  let projectTags = '';
+  if (snap.projects && snap.projects.length) {
+    projectTags = '<div class="snap-projects">' + snap.projects.map(p => '<span>' + p + '</span>').join('') + '</div>';
+  }
+
+  const undoCmd = isBackup
+    ? './rollback.sh ' + snap.id
+    : '/reflect undo';
+
+  ct.innerHTML = `
+    <div class="content-header">
+      <div class="breadcrumb">Restore Points</div>
+      <h2>Snapshot: ${date} ${typeLabel}</h2>
+    </div>
+
+    <div class="snap-card">
+      <h3>${snap.id}</h3>
+      <div class="snap-meta">
+        <div><div class="label">Date</div>${date}${time ? ' ' + time : ''}</div>
+        <div><div class="label">Type</div>${isBackup ? 'Full backup' : 'Reflect snapshot'}</div>
+        <div><div class="label">Level</div>${snap.level}</div>
+        <div><div class="label">Files</div>${snap.files}</div>
+      </div>
+      ${snap.args ? '<p style="color:var(--text-muted);font-size:0.82rem;margin-top:0.5rem">' + snap.args + '</p>' : ''}
+      ${projectTags}
+    </div>
+
+    <div class="snap-restore-hint">
+      To restore to this point, run:<br>
+      <code>${undoCmd}</code>
+    </div>
+
+    ${snap.file_list && snap.file_list.length ? `
+    <h3 style="margin:2rem 0 0.8rem;font-size:0.95rem">Files in Snapshot</h3>
+    <table class="markdown-body" style="max-width:500px">
+      <thead><tr><th>File</th><th style="text-align:right">Lines</th></tr></thead>
+      <tbody>
+        ${snap.file_list.map(f =>
+          '<tr><td style="font-size:0.78rem"><code>' + f.path + '</code></td><td style="text-align:right;font-size:0.78rem">' + f.lines + '</td></tr>'
+        ).join('')}
+      </tbody>
+    </table>
+    ` : ''}
+
+    <h3 style="margin:2rem 0 0.8rem;font-size:0.95rem">All Restore Points</h3>
+    <div class="snap-timeline">
+      ${SNAPSHOTS.map(s => {
+        const d = s.timestamp.length >= 10 ? s.timestamp.substring(0, 10) : s.timestamp;
+        const tl = s.type === 'backup' ? 'backup' : 'L' + s.level;
+        const cls = s.type === 'backup' ? 'backup' : 'reflect';
+        const highlight = s.id === id ? 'background:var(--surface);border-radius:0 6px 6px 0;' : '';
+        return '<div class="snap-timeline-item ' + cls + '" style="' + highlight + '" onclick="showSnap(\'' + s.id + '\')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center">' +
+          '<strong style="font-size:0.82rem">' + d + '</strong>' +
+          '<span class="snap-type ' + cls + '">' + tl + '</span></div>' +
+          '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:0.2rem">' + s.files + ' files' + (s.args ? ' — ' + s.args.substring(0, 50) : '') + '</div>' +
+          '</div>';
+      }).join('')}
+    </div>
+  `;
+  ct.scrollTop = 0;
+}
+
+// ── Show Document ──
+function showDoc(id) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const active = document.querySelector('.nav-item[data-id="'+id+'"]');
+  if (active) active.classList.add('active');
+  const ct = document.getElementById('content');
+  if (id === 'home') { ct.innerHTML = homePage(); ct.scrollTop = 0; return; }
+  let doc = null, projName = '';
+  for (const [k, p] of Object.entries(DOCS)) {
+    const f = p.docs.find(d => d.id === id);
+    if (f) { doc = f; projName = p.name; break; }
+  }
+  if (!doc || !CONTENT[id]) { ct.innerHTML = '<p style="color:var(--text-dim)">No content.</p>'; return; }
+  const badge = doc.level !== null ? '<span class="level-badge '+lvlClass(doc.level)+'">'+lvlName(doc.level)+'</span>' : '';
+  ct.innerHTML = '<div class="content-header"><div class="breadcrumb">'+projName+' / <span>'+(doc.path||'')+'</span></div><h2>'+doc.title+badge+'</h2></div><div class="markdown-body">'+renderMarkdown(CONTENT[id])+'</div>';
+  ct.scrollTop = 0;
+}
+
+// ── Home ──
+function homePage() {
+  let l0=0, l1=0, l2=0, l1c=0, l2c=0;
+  for (const p of Object.values(DOCS)) for (const d of p.docs) {
+    const n = CONTENT[d.id] ? CONTENT[d.id].split('\n').length : 0;
+    if (d.level===0) l0+=n;
+    if (d.level===1) { l1+=n; l1c++; }
+    if (d.level===2) { l2+=n; l2c++; }
+  }
+  return `
+    <div style="max-width:700px">
+      <h2 style="font-size:1.1rem;margin-bottom:0.5rem">Pyramid Documentation Viewer</h2>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem">
+        Documentation organized by the pyramid architecture. The AI always loads Level 0.
+        Playbooks and references load on demand per task type.
+        Click any document in the sidebar to read it.
+      </p>
+
+      <div class="stats">
+        <div class="stat-card l0"><div class="value">${l0}</div><div class="label">Lines always in context (L0)</div></div>
+        <div class="stat-card l1"><div class="value">${l1c} / ${l1}L</div><div class="label">Playbooks — per task (L1)</div></div>
+        <div class="stat-card l2"><div class="value">${l2c} / ${l2}L</div><div class="label">Reference — on demand (L2)</div></div>
+        <div class="stat-card"><div class="value" style="color:var(--text-dim)">~87%</div><div class="label">Less always-loaded context</div></div>
+      </div>
+
+      <h3 style="margin:2rem 0 0.8rem;font-size:0.95rem">The Pyramid</h3>
+      <div class="pyramid-visual">
+        <div class="pyramid-tier">
+          <div class="tier-bar" style="width:80px;background:var(--accent-l0)"></div>
+          <div class="tier-label" style="color:var(--accent-l0)">Level 0</div>
+          <div class="tier-desc">CLAUDE.md — always loaded, ~50 lines, identity + routing table</div>
+        </div>
+        <div class="pyramid-tier">
+          <div class="tier-bar" style="width:200px;background:var(--accent-l1)"></div>
+          <div class="tier-label" style="color:var(--accent-l1)">Level 1</div>
+          <div class="tier-desc">Playbooks — loaded per task type (testing, deployment, git...)</div>
+        </div>
+        <div class="pyramid-tier">
+          <div class="tier-bar" style="width:360px;background:var(--accent-l2)"></div>
+          <div class="tier-label" style="color:var(--accent-l2)">Level 2</div>
+          <div class="tier-desc">Reference — schemas, URLs, credentials. Loaded when a playbook points to them.</div>
+        </div>
+        <div class="pyramid-tier">
+          <div class="tier-bar" style="width:520px;background:var(--accent-l3)"></div>
+          <div class="tier-label" style="color:var(--accent-l3)">Level 3</div>
+          <div class="tier-desc">Raw knowledge — code, git history. Never pre-loaded. Searched via tools.</div>
+        </div>
+      </div>
+
+      <h3 style="margin:2rem 0 0.8rem;font-size:0.95rem">How It Flows</h3>
+      <div class="context-flow">
+        <div class="flow-box" style="background:rgba(245,158,11,0.15);color:var(--accent-l0)">User asks a question</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="background:rgba(245,158,11,0.15);color:var(--accent-l0)">L0 is already loaded</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="background:rgba(59,130,246,0.15);color:var(--accent-l1)">Routing table says: read playbook X</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="background:rgba(59,130,246,0.15);color:var(--accent-l1)">Model reads playbook</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="background:rgba(139,92,246,0.15);color:var(--accent-l2)">If needed: load reference</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-box" style="background:rgba(107,114,128,0.15);color:var(--accent-l3)">Search code/git as needed</div>
+      </div>
+
+      <h3 style="margin:2rem 0 0.8rem;font-size:0.95rem">Before &amp; After</h3>
+      <table class="markdown-body" style="max-width:520px">
+        <thead><tr><th>Project</th><th>Before</th><th>After (L0)</th><th>Cut</th></tr></thead>
+        <tbody>
+          <tr><td>activecomply-api</td><td>390 lines</td><td>~50 lines</td><td style="color:var(--accent-l0)">87%</td></tr>
+          <tr><td>zeitgeist</td><td>295 lines</td><td>59 lines</td><td style="color:var(--accent-l0)">80%</td></tr>
+          <tr><td>dashboard-app</td><td>398 lines</td><td><em>not yet converted</em></td><td>—</td></tr>
+          <tr><td>dev-agents</td><td>503 lines</td><td><em>not yet converted</em></td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <p style="color:var(--text-dim);font-size:0.78rem;margin-top:2.5rem">
+        Built from analysis of 146 Claude Code sessions, 1,023 user messages, 212 MB of conversation history.
+      </p>
+    </div>
+  `;
+}
+
+// ── Init ──
+buildSidebar();
+showDoc('home');
+</script>
+</body>
+</html>

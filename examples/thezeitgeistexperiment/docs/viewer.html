@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>thezeitgeistexperiment — Pyramid Docs</title>
+<style>
+  :root { --bg:#0a0a0b; --s:#141416; --s2:#1c1c20; --b:#27272a; --t:#e4e4e7; --tm:#a1a1aa; --td:#71717a; --l0:#f59e0b; --l1:#3b82f6; --l2:#8b5cf6; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'SF Mono','Cascadia Code','Fira Code',monospace; background:var(--bg); color:var(--t); line-height:1.6; }
+  a { color:var(--l1); text-decoration:none; } a:hover { text-decoration:underline; }
+  .hdr { border-bottom:1px solid var(--b); padding:1.5rem 2rem; display:flex; justify-content:space-between; align-items:center; }
+  .hdr h1 { font-size:1.2rem; } .hdr .sub { color:var(--td); font-size:0.8rem; }
+  .wrap { display:flex; height:calc(100vh - 70px); }
+  .side { width:280px; min-width:280px; border-right:1px solid var(--b); overflow-y:auto; padding:1rem 0; }
+  .side::-webkit-scrollbar { width:5px; } .side::-webkit-scrollbar-thumb { background:var(--b); border-radius:3px; }
+  .lvl { padding:0.5rem 1rem 0.2rem; font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; }
+  .lvl.l0 { color:var(--l0); } .lvl.l1 { color:var(--l1); } .lvl.l2 { color:var(--l2); }
+  .ni { padding:0.35rem 1rem 0.35rem 1.4rem; font-size:0.82rem; color:var(--tm); cursor:pointer; border-left:2px solid transparent; display:flex; justify-content:space-between; align-items:center; transition:all .12s; }
+  .ni:hover { background:var(--s); color:var(--t); }
+  .ni.on { background:var(--s2); color:var(--t); border-left-color:var(--l1); }
+  .ni .ln { font-size:0.68rem; color:var(--td); background:var(--s2); padding:1px 5px; border-radius:3px; }
+  .ct { flex:1; overflow-y:auto; padding:2rem 3rem; max-width:850px; }
+  .ct::-webkit-scrollbar { width:5px; } .ct::-webkit-scrollbar-thumb { background:var(--b); border-radius:3px; }
+  .ch { margin-bottom:1.2rem; padding-bottom:0.8rem; border-bottom:1px solid var(--b); }
+  .ch .bc { font-size:0.72rem; color:var(--td); margin-bottom:0.3rem; }
+  .ch h2 { font-size:1.05rem; }
+  .badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:2px 7px; border-radius:3px; margin-left:0.5rem; vertical-align:middle; }
+  .badge.l0 { background:rgba(245,158,11,.15); color:var(--l0); }
+  .badge.l1 { background:rgba(59,130,246,.15); color:var(--l1); }
+  .badge.l2 { background:rgba(139,92,246,.15); color:var(--l2); }
+  .md { font-size:0.85rem; line-height:1.7; }
+  .md h1 { font-size:1.15rem; margin:1.3rem 0 .7rem; font-weight:600; }
+  .md h2 { font-size:1rem; margin:1.1rem 0 .5rem; font-weight:600; }
+  .md h3 { font-size:.88rem; margin:.8rem 0 .4rem; font-weight:600; color:var(--tm); }
+  .md p { margin:.4rem 0; color:var(--tm); }
+  .md ul,.md ol { margin:.4rem 0; padding-left:1.4rem; color:var(--tm); }
+  .md li { margin:.2rem 0; }
+  .md strong { color:var(--t); font-weight:600; }
+  .md code { background:var(--s2); padding:2px 5px; border-radius:3px; font-size:.78rem; color:#e2b86b; }
+  .md pre { background:var(--s); border:1px solid var(--b); border-radius:6px; padding:.8rem; overflow-x:auto; margin:.6rem 0; }
+  .md pre code { background:none; padding:0; color:var(--tm); }
+  .md table { width:100%; border-collapse:collapse; margin:.6rem 0; font-size:.78rem; }
+  .md th { text-align:left; padding:.4rem .7rem; border-bottom:2px solid var(--b); color:var(--t); font-weight:600; }
+  .md td { padding:.35rem .7rem; border-bottom:1px solid var(--b); color:var(--tm); }
+  .md tr:hover td { background:var(--s); }
+  .md hr { border:none; border-top:1px solid var(--b); margin:1.2rem 0; }
+  .md blockquote { border-left:3px solid var(--b); padding-left:.8rem; color:var(--td); margin:.6rem 0; }
+  .sts { display:flex; gap:.8rem; margin:1rem 0; flex-wrap:wrap; }
+  .st { background:var(--s); border:1px solid var(--b); border-radius:6px; padding:.7rem; min-width:120px; }
+  .st .v { font-size:1.1rem; font-weight:700; } .st .l { font-size:.65rem; color:var(--td); margin-top:.15rem; }
+  @media(max-width:700px) { .wrap { flex-direction:column; height:auto; } .side { width:100%; min-width:100%; max-height:35vh; border-right:none; border-bottom:1px solid var(--b); } .ct { padding:1rem; } }
+</style>
+</head>
+<body>
+<div class="hdr"><div><h1>thezeitgeistexperiment</h1></div><div class="sub">L0: 60L &middot; L1: 6 files/286L &middot; L2: 3 files/155L</div></div>
+<div class="wrap"><div class="side" id="sb"></div><div class="ct" id="ct"></div></div>
+<script>
+const DOCS={
+  "project": {
+    "name": "thezeitgeistexperiment",
+    "docs": [
+      {
+        "id": "l0-claude",
+        "title": "CLAUDE.md",
+        "level": 0,
+        "path": "CLAUDE.md"
+      },
+      {
+        "id": "l1-aws-infra",
+        "title": "Aws Infra",
+        "level": 1,
+        "path": "docs/playbooks/aws-infra.md"
+      },
+      {
+        "id": "l1-email-system",
+        "title": "Email System",
+        "level": 1,
+        "path": "docs/playbooks/email-system.md"
+      },
+      {
+        "id": "l1-frontend",
+        "title": "Frontend",
+        "level": 1,
+        "path": "docs/playbooks/frontend.md"
+      },
+      {
+        "id": "l1-lambda-workflow",
+        "title": "Lambda Workflow",
+        "level": 1,
+        "path": "docs/playbooks/lambda-workflow.md"
+      },
+      {
+        "id": "l1-seed-reindex",
+        "title": "Seed Reindex",
+        "level": 1,
+        "path": "docs/playbooks/seed-reindex.md"
+      },
+      {
+        "id": "l1-testing",
+        "title": "Testing",
+        "level": 1,
+        "path": "docs/playbooks/testing.md"
+      },
+      {
+        "id": "l2-aws-resources",
+        "title": "Aws Resources",
+        "level": 2,
+        "path": "docs/reference/aws-resources.md"
+      },
+      {
+        "id": "l2-project-structure",
+        "title": "Project Structure",
+        "level": 2,
+        "path": "docs/reference/project-structure.md"
+      },
+      {
+        "id": "l2-visual-design",
+        "title": "Visual Design",
+        "level": 2,
+        "path": "docs/reference/visual-design.md"
+      }
+    ]
+  }
+};
+const CONTENT={
+  "l0-claude": "# CLAUDE.md\n\n**The Zeitgeist Experiment** \u2014 A living repository of collective opinion. Users email responses to topic bubbles, AI scores and ranks them. No accounts, no feeds, no likes. Email is the primary entry point.\n\nDomains: `thezeitgeistexperiment.com`, `zeitgeistexperiment.com` (redirects)\n\n## Stack\n\n- **Language:** TypeScript, Node.js 22.x\n- **Infra:** AWS (Lambda, S3, SQS, SES, EventBridge, CloudFront, DynamoDB)\n- **IaC:** CloudFormation (NOT CDK, NOT Terraform)\n- **AI:** Claude via Amazon Bedrock for scoring, summarization, moderation\n- **CI/CD:** GitHub Actions \u2192 deploy to AWS\n\n## Hard Rules\n\n1. **CloudFormation only** \u2014 No CDK, no Terraform\n2. **Plain text email** \u2014 No HTML emails (deliberate design choice)\n3. **Anti-convention design is intentional** \u2014 Serif fonts, no color, no buttons, no tracking. Do not \"fix\" these.\n4. **No API Gateway** \u2014 Website reads static JSON from S3 via CloudFront\n5. **Node.js 22.x minimum** \u2014 Don't use older runtimes\n6. **Git: push to main** \u2014 No feature branches. Ship directly to main.\n\n## Build & Deploy\n\n```\nnpm install && npm run build && npm test\ngit push origin main                    # Triggers GitHub Actions deploy\n```\n\nManual CloudFormation: `aws cloudformation deploy --template-file infrastructure/template.yaml --stack-name zeitgeist-dev --capabilities CAPABILITY_NAMED_IAM`\n\n## Before You Start\n\n| Task | Read First |\n|------|-----------|\n| Lambda changes or new Lambda | `docs/playbooks/lambda-workflow.md` |\n| Seeding or reindexing data | `docs/playbooks/seed-reindex.md` |\n| Email flow changes | `docs/playbooks/email-system.md` |\n| Running tests | `docs/playbooks/testing.md` |\n| AWS infrastructure changes | `docs/playbooks/aws-infra.md` |\n| Frontend / bubble map changes | `docs/playbooks/frontend.md` |\n\n## Key Documentation\n\n- `PROJECT_SPEC.md` \u2014 Technical specification (keep updated)\n- `known-bugs/` \u2014 Numbered bug reports with status\n- `docs/generated/email-system.md` \u2014 Auto-generated (run `npm run docs:emails`)\n\n## AWS Access\n\nIAM user `claude-readonly` with `ZeitgeistReadOnly` + `claude-seed-policy`. Region: `us-east-1`. When permission denied: tell user the exact action/resource \u2014 they add it manually in console.\n\n## Do Not\n\n- Add accent colors, gradients, or decorative elements\n- Create APIs for reading thread data (that's direct S3 via CloudFront)\n- Add npm packages without considering Lambda bundle size\n- Implement outbound email question distribution (post-MVP)\n",
+  "l1-aws-infra": "# Playbook: AWS Infrastructure\n\n## CloudFormation\n\nAll infrastructure is in `infrastructure/template.yaml`. YAML only, not JSON.\n\n```bash\n# Validate\naws cloudformation validate-template --template-body file://infrastructure/template.yaml\n\n# Deploy\naws cloudformation deploy \\\n  --template-file infrastructure/template.yaml \\\n  --stack-name zeitgeist-dev \\\n  --capabilities CAPABILITY_NAMED_IAM\n```\n\nNaming conventions: Logical IDs in PascalCase, descriptions on all resources, `!Ref` and `!GetAtt` over hardcoded values.\n\n## IAM\n\n- `claude-readonly` user \u2014 managed **manually in AWS console** (NOT in CloudFormation)\n- Policies: `ZeitgeistReadOnly` + `claude-seed-policy`\n- Policy JSON source: `infrastructure/claude-seed-policy.json`\n- To update: edit the JSON, paste into AWS console manually\n\nWhen a permission error occurs: report the exact action and resource denied. The user adds it manually.\n\n## Adding AWS Resources\n\n1. Add to `infrastructure/template.yaml`\n2. Validate template\n3. Deploy via CloudFormation or push (GitHub Actions deploys)\n4. Update PROJECT_SPEC.md Architecture section\n5. If new S3 bucket: document in S3 Buckets table\n\n## Checking Resources\n\n```bash\n# Lambda logs\naws logs tail /aws/lambda/zeitgeist-{name}-dev --follow\n\n# S3 contents\naws s3 ls s3://zeitgeist-public-{accountId}/\n\n# DynamoDB scan\naws dynamodb scan --table-name zeitgeist-threads-dev --max-items 5\n\n# SQS queue depth\naws sqs get-queue-attributes --queue-url {url} --attribute-names ApproximateNumberOfMessages\n```\n\n## Do Not\n\n- Use CDK or Terraform \u2014 CloudFormation only\n- Modify IAM via CloudFormation \u2014 it's manual\n- Add resources without updating PROJECT_SPEC.md\n",
+  "l1-email-system": "# Playbook: Email System\n\n## Inbound Flow\n\n```\nUser sends email \u2192 SES receives \u2192 SNS notification \u2192 SQS queue \u2192 response-processor Lambda\n```\n\nEmail address determines routing:\n- `{thread-id}@thezeitgeistexperiment.com` \u2192 thread response handler\n- `thezeitgeistbot@...` \u2192 new topic submission\n\n## Outbound Notifications\n\n4 types:\n1. `question_live` \u2014 Your topic is now live\n2. `new_response` \u2014 Someone responded to your topic\n3. `ranking_confirmation` \u2014 Your response was ranked\n4. `settings` \u2014 Settings/preferences changes\n\nSent via `email-dispatcher` Lambda. **Plain text only** \u2014 no HTML emails (deliberate design choice).\n\n## Key Constants\n\n| Constant | Location | Purpose |\n|----------|----------|---------|\n| `FROM_ADDRESS` | response-processor | Outbound sender address |\n| `SITE_URL` | response-processor | Link base in emails |\n| `DOMAIN` | response-processor | Email domain |\n| `IGNORE_ADDRESSES` | response-processor | Addresses to skip |\n| `DUPLICATE_THRESHOLD` | response-processor | Similarity cutoff for dedup |\n\n## Regenerating Email Docs\n\n```bash\nnpm run docs:emails          # Regenerate docs/generated/email-system.md\nnpm run docs:emails:check    # CI mode \u2014 fails if docs are stale\n```\n\nThe generator reads 6 source files via regex and produces markdown. Run after any email flow change.\n\n## Changing Email Templates\n\nEdit in `lambdas/email-dispatcher/`. Update PROJECT_SPEC.md Email Flows section if structure changes.\n\n## Common Issues\n\n- Notification throttle in `response-path.ts` \u2014 may suppress expected emails\n- SES receiving rules only process `@thezeitgeistexperiment.com` domain\n- SNS topic connects SES to SQS \u2014 check SNS subscriptions if emails aren't processing\n",
+  "l1-frontend": "# Playbook: Frontend / Bubble Map\n\n## Architecture\n\nThe entire frontend is **one file**: `website/index.html` (~1800 lines, all CSS and JS inline).\n\nNo component system, no build pipeline for the frontend. All changes require editing this monolith.\n\n## Canvas Rendering\n\n- Bubble physics: position lerping, alpha transitions\n- Camera system: `camX/camY`, `targetCamX/targetCamY`, `detailLevel`\n- Bubble state machine: layout targets, search alpha, fade states\n- Rendering loop runs continuously via `requestAnimationFrame`\n\n## URL Parameters\n\n- `?thread={thread-id}` \u2014 Opens map centered on that thread's bubble\n- This has been a recurring source of bugs \u2014 the interaction between bubble map initialization, camera positioning, and thread detail view is fragile\n\n## Visual Testing\n\nUse the **Ralph Wiggum technique** \u2014 iterative Puppeteer screenshot loop:\n1. Take screenshot of live site\n2. Review visually\n3. Make change, push, wait for deploy\n4. Screenshot again, compare\n\nTests use **live URL** (data is in S3/CloudFront), not a local server.\n\n## Common Issues\n\n- **Ghost bubbles on zoom out** \u2014 bubbles with `r < 1` stuck in dead zone\n- **?thread= showing wrong view** \u2014 map-centered vs thread-only view confusion\n- **Search feature** \u2014 keyboard-navigable, canvas dimming, dropdown results\n\n## Design Rules\n\n- Monochromatic dark palette (see `docs/reference/visual-design.md`)\n- Serif fonts (Georgia) \u2014 intentional, do not change\n- No accent colors, gradients, or decorative elements\n- All animations respect `prefers-reduced-motion: reduce`\n",
+  "l1-lambda-workflow": "# Playbook: Lambda Development\n\n## Current Lambdas\n\n| Lambda | Purpose | Trigger |\n|--------|---------|---------|\n| response-processor | Parse emails, score, create threads | SQS (from SES\u2192SNS) |\n| email-dispatcher | Send confirmation/notification emails | Direct invoke |\n| ui-index-rebuilder | Rebuild index.json from DynamoDB | EventBridge (every 60s) |\n| vector-embedder-builder | Embeddings, coordinates, category tree | EventBridge (daily 4am UTC) |\n| email-test | Test email send | Manual invoke |\n\n## Adding a New Lambda\n\n1. Create `lambdas/{lambda-name}/` directory\n2. Create `index.ts` with handler export\n3. Create `tsconfig.json` extending `../../tsconfig.base.json`\n4. Add build script to `package.json`\n5. Add typecheck to `package.json` typecheck script\n6. Add to CloudFormation `infrastructure/template.yaml`\n7. Update `PROJECT_SPEC.md` Architecture section\n\n## Testing a Lambda\n\n```bash\n# Invoke directly\naws lambda invoke --function-name zeitgeist-{name}-dev /dev/stdout\n\n# With payload\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \\\n  --payload '{\"threadIds\":[\"thread-1\"]}' /dev/stdout\n```\n\n## Build\n\n```bash\nnode esbuild.config.mjs   # Builds all lambdas to dist/\n```\n\n## Deploy Cycle\n\n1. Make changes \u2192 `npm run build` \u2192 `npm test`\n2. `git push origin main` \u2192 GitHub Actions deploys\n3. Check build: `gh run list --limit 3`\n4. If green and seeds needed: run seed scripts\n5. Verify on live site\n",
+  "l1-seed-reindex": "# Playbook: Seed Data & Reindexing\n\n## Seed Scripts\n\n```bash\n# Short topics (300 one-liners)\nnpm run seed:topics [--dry-run] [--delay <ms>]\n\n# Short responses (embedding-matched)\nnpm run seed:responses [--dry-run] [--delay <ms>]\n\n# Long topics (100 essay-length)\nnpm run seed:long-topics [--dry-run] [--delay <ms>]\n\n# Long responses (text-matched)\nnpm run seed:long-responses [--dry-run] [--delay <ms>]\n\n# Generate new responses via Claude API\nANTHROPIC_API_KEY=sk-... npm run seed:generate\nANTHROPIC_API_KEY=sk-... npm run seed:generate-long\nANTHROPIC_API_KEY=sk-... npm run seed:generate-long-responses\n```\n\n## Reindex / Re-embed\n\n```bash\n# Full reindex (all threads + category tree)\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev --payload '{}' /dev/stdout\n\n# Specific threads only (no category rebuild)\naws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \\\n  --payload '{\"threadIds\":[\"thread-id-1\",\"thread-id-2\"]}' /dev/stdout\n```\n\n## After Model/Scoring Changes\n\n1. Delete old event bucket data (if needed)\n2. Run seed scripts\n3. Check topic count (should be ~300, not ~80)\n4. Run reindex lambda\n5. Verify on live site\n\n## Common Mistake\n\nDUPLICATE_THRESHOLD too low \u2192 collapses unique topics. Each seed topic IS intentionally different. If topics are being collapsed, raise the threshold, don't assume duplicates.\n",
+  "l1-testing": "# Playbook: Testing (Zeitgeist)\n\n## Unit Tests\n\n```bash\nnpm test          # Vitest\n```\n\n## Integration Tests\n\n```bash\nINTEGRATION=true vitest run   # Hits real Bedrock + S3 Vectors\n```\n\nIntegration tests are NOT run in normal CI. They require AWS credentials.\n\n## Smoke Tests\n\nScript exercises full email flow with settings changes. Located in `scripts/`.\n\n## Regression Tests\n\nAI-generated reports using himalaya CLI for email send/receive verification. Gmail test account credentials at `~/inkmans_brain`.\n\n## Visual Testing (Ralph Wiggum Technique)\n\nIterative Puppeteer screenshot loop for UI testing:\n1. Take screenshot of live site\n2. Review visually\n3. Make change\n4. Screenshot again\n5. Compare\n\nTests use live URL (data in S3/CloudFront), not local server.\n\n## CI Pipeline\n\nGitHub Actions runs: build \u2192 typecheck \u2192 tests \u2192 `docs:emails:check` \u2192 deploy\n\nThe `docs:emails:check` step verifies auto-generated email docs are current. Run `npm run docs:emails` locally to regenerate.\n",
+  "l2-aws-resources": "# Reference: AWS Resources\n\n## Region: us-east-1\n\n## Lambda Functions\n\n| Function | Purpose | Trigger |\n|----------|---------|---------|\n| `zeitgeist-response-processor-dev` | Parse inbound emails, score responses, manage threads | SQS |\n| `zeitgeist-email-dispatcher-dev` | Send confirmation/notification emails | Direct invoke |\n| `zeitgeist-ui-index-rebuilder-dev` | Rebuild public index.json from DynamoDB | EventBridge (60s) |\n| `zeitgeist-vector-embedder-builder-dev` | Embeddings, coordinates, category tree | EventBridge (daily 4am UTC) |\n| `zeitgeist-email-test-dev` | Test email sending | Manual invoke |\n| `zeitgeist-bedrock-test-dev` | Test Bedrock integration | Manual invoke |\n\n## S3 Buckets\n\n| Bucket | Access | Content |\n|--------|--------|---------|\n| `zeitgeist-website-{env}-{accountId}` | Private (CloudFront OAC) | Static HTML/CSS/JS |\n| `zeitgeist-public-{accountId}` | Private (CloudFront OAC) | index.json, categories.json, threads/*.json, users/*.json |\n| `zeitgeist-events-{accountId}` | Private (Lambda only, deny-delete) | Immutable event log: `events/{date}/{timestamp}_{id}.json` |\n| `zeitgeist-vectors-dev` | Private | Vector embeddings index |\n\n## DynamoDB Tables\n\n| Table | PK | Purpose |\n|-------|-----|---------|\n| `zeitgeist-threads-{env}` | `thread_id` (S) | Thread metadata \u2014 source of truth for index.json |\n| `zeitgeist-profiles-{env}` | `email_hash` (S) | User profiles with email addresses |\n\n## Email Pipeline\n\n```\nInbound email \u2192 SES \u2192 SNS \u2192 SQS \u2192 response-processor Lambda\n  \u2192 DynamoDB (threads/profiles)\n  \u2192 S3 (thread JSON, event log)\n  \u2192 email-dispatcher Lambda (confirmations)\n```\n\n## Email Addresses\n\n| Address | Purpose |\n|---------|---------|\n| `*@thezeitgeistexperiment.com` | Inbound (SES receiving) |\n| `thezeitgeistbot@thezeitgeistexperiment.com` | Outbound sender |\n| `albert.g.inkman@gmail.com` | AI seed user |\n| `jakeaaronson@gmail.com` | Owner |\n\n## Email Notification Types\n\n1. `question_live` \u2014 Your topic is now live\n2. `new_response` \u2014 Someone responded to your topic\n3. `ranking_confirmation` \u2014 Your response was ranked\n4. `settings` \u2014 Settings/preferences changes\n\n## IAM\n\n- `claude-readonly` user \u2014 managed manually in AWS console (NOT CloudFormation)\n- Policies: `ZeitgeistReadOnly` + `claude-seed-policy`\n- Policy JSON: `infrastructure/claude-seed-policy.json` (paste into console manually)\n- When permission denied: report exact action + resource \u2192 user adds in console\n",
+  "l2-project-structure": "# Reference: Project Structure\n\n## Key Paths\n\n| Path | Purpose |\n|------|---------|\n| `website/index.html` | Entire frontend (~1800 lines, canvas bubble map, all inline) |\n| `lambdas/response-processor/` | Core backend (email-parser.ts, response-path.ts, topic-path.ts, embeddings.ts, user-ops.ts) |\n| `lambdas/email-dispatcher/index.ts` | Email templates and sending |\n| `lambdas/ui-index-rebuilder/` | Rebuilds public index.json (EventBridge, 60s) |\n| `lambdas/vector-embedder-builder/` | Embeddings, coordinates, category tree (daily) |\n| `infrastructure/template.yaml` | CloudFormation/SAM template |\n| `infrastructure/claude-seed-policy.json` | IAM policy (manual console paste) |\n| `known-bugs/` | Numbered bug reports (001-008+) |\n| `docs/generated/email-system.md` | Auto-generated email docs (`npm run docs:emails`) |\n| `scripts/seed/` | Seed data scripts and JSON files |\n| `brainstorm/` | Old spec, question lists, email samples |\n\n## Frontend Architecture\n\nSingle `website/index.html` with:\n- Canvas rendering loop with bubble physics (position lerping, alpha transitions)\n- Camera system (camX/camY, targetCamX/targetCamY, detailLevel)\n- Bubble state machine (layout targets, search alpha, fade states)\n- All CSS and JS inline \u2014 no component system, no build pipeline for frontend\n- Modifications require editing this monolithic file\n\n## Build\n\n```bash\nnode esbuild.config.mjs    # Builds all lambdas to dist/\nnpm run build               # Full build (includes typecheck)\n```\n\n## CloudFormation\n\n```yaml\n# YAML only, not JSON\n# Logical IDs in PascalCase\n# Descriptions on all resources\n# !Ref and !GetAtt over hardcoded values\n```\n\nTemplate: `infrastructure/template.yaml`\nValidate: `aws cloudformation validate-template --template-body file://infrastructure/template.yaml`\n",
+  "l2-visual-design": "# Reference: Visual Design\n\n## Palette (Monochromatic Dark)\n\n| Element | Color |\n|---------|-------|\n| Background | `#09090b` (Zinc 950) |\n| Heading | `#e4e4e7` |\n| Body text | `#d4d4d8` |\n| Description | `#a1a1aa` |\n| Tagline | `#71717a` |\n| Muted labels | `#52525b` |\n| Dividers | `#27272a` |\n\nNo accent colors. Luminance alone creates hierarchy.\n\n## Typography\n\nSerif font stack (Georgia). This is intentional \u2014 do not switch to sans-serif.\n\n## Animations\n\n- **Bubble lerp**: Position/size/opacity interpolate smoothly (`LERP_SPEED = 0.1`)\n- **Breathe + shimmer**: Subtle radius oscillation + traveling perimeter highlight\n- **Morph open/close**: Bubble \u2192 full-width detail header (`.5s cubic-bezier`), reverses on back\n- **Onboarding fade-in**: Blur-to-clear on instruction overlay\n- All respect `prefers-reduced-motion: reduce`\n\n## Anti-Convention Choices (INTENTIONAL)\n\nThese look like mistakes to outsiders but are deliberate:\n- Serif fonts (not sans-serif)\n- No color (monochromatic)\n- Plain text email (not HTML)\n- No buttons (mailto: links)\n- No tracking\n- No exclamation marks\n\nSee `PROJECT_SPEC.md` sections: \"The Anti-Convention Identity\", \"Design Is Not\", \"Design Reflects Values\"\n\n## Voice & Tone\n\nShort, declarative, no hype. \"Growing collective thought.\" \u2014 not \"We're building an exciting platform!\"\n\nEm dashes over parentheses. Write like a thoughtful person, not a marketing team.\n"
+};
+function rmd(m){let h=m;h=h.replace(/```(\w*)\n([\s\S]*?)```/g,(_,l,c)=>'<pre><code>'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').trim()+'</code></pre>');h=h.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)*)/gm,(_,hd,s,bd)=>{let ths=hd.split('|').filter(c=>c.trim()).map(c=>'<th>'+il(c.trim())+'</th>').join('');let rs=bd.trim().split('\n').map(r=>{let cs=r.split('|').filter(c=>c.trim()).map(c=>'<td>'+il(c.trim())+'</td>').join('');return'<tr>'+cs+'</tr>'}).join('');return'<table><thead><tr>'+ths+'</tr></thead><tbody>'+rs+'</tbody></table>'});h=h.replace(/^### (.+)$/gm,'<h3>$1</h3>');h=h.replace(/^## (.+)$/gm,'<h2>$1</h2>');h=h.replace(/^# (.+)$/gm,'<h1>$1</h1>');h=h.replace(/^> (.+)$/gm,'<blockquote><p>$1</p></blockquote>');h=h.replace(/^---$/gm,'<hr>');h=h.replace(/^- (.+)$/gm,'<li>$1</li>');h=h.replace(/((?:<li>.*<\/li>\n?)+)/g,'<ul>$1</ul>');h=h.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');h=h.replace(/^(?!<[hupoltbs]|$|\s*$)(.+)$/gm,'<p>$1</p>');h=il(h);return h}
+function il(t){t=t.replace(/`([^`]+)`/g,'<code>$1</code>');t=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');t=t.replace(/\*(.+?)\*/g,'<em>$1</em>');t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2">$1</a>');return t}
+function lN(l){return l===0?'Level 0 — Apex':l===1?'Level 1 — Playbook':l===2?'Level 2 — Reference':''}
+function lC(l){return l===0?'l0':l===1?'l1':l===2?'l2':''}
+function buildSb(){const sb=document.getElementById('sb');let h='';let cl=-1;for(const d of DOCS.project.docs){if(d.level!==cl){cl=d.level;h+='<div class="lvl '+lC(d.level)+'">'+lN(d.level)+'</div>'}const n=CONTENT[d.id]?CONTENT[d.id].split('\n').length:0;h+='<div class="ni" data-id="'+d.id+'" onclick="show(\''+d.id+'\')"><span>'+d.title+'</span><span class="ln">'+n+'L</span></div>'}sb.innerHTML=h}
+function show(id){document.querySelectorAll('.ni').forEach(e=>e.classList.remove('on'));const a=document.querySelector('.ni[data-id="'+id+'"]');if(a)a.classList.add('on');const ct=document.getElementById('ct');const d=DOCS.project.docs.find(x=>x.id===id);if(!d||!CONTENT[id]){ct.innerHTML='<p style="color:var(--td)">No content.</p>';return}const b=d.level!==null?'<span class="badge '+lC(d.level)+'">'+lN(d.level)+'</span>':'';ct.innerHTML='<div class="ch"><div class="bc">'+d.path+'</div><h2>'+d.title+b+'</h2></div><div class="md">'+rmd(CONTENT[id])+'</div>';ct.scrollTop=0}
+buildSb();
+if(DOCS.project.docs.length)show(DOCS.project.docs[0].id);
+</script>
+</body>
+</html>
