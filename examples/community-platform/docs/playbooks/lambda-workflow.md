@@ -24,10 +24,10 @@
 
 ```bash
 # Invoke directly
-aws lambda invoke --function-name zeitgeist-{name}-dev /dev/stdout
+aws lambda invoke --function-name community-{name}-dev /dev/stdout
 
 # With payload
-aws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \
+aws lambda invoke --function-name community-vector-embedder-builder-dev \
   --payload '{"threadIds":["thread-1"]}' /dev/stdout
 ```
 

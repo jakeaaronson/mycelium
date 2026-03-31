@@ -25,10 +25,10 @@ ANTHROPIC_API_KEY=sk-... npm run seed:generate-long-responses
 
 ```bash
 # Full reindex (all threads + category tree)
-aws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev --payload '{}' /dev/stdout
+aws lambda invoke --function-name community-vector-embedder-builder-dev --payload '{}' /dev/stdout
 
 # Specific threads only (no category rebuild)
-aws lambda invoke --function-name zeitgeist-vector-embedder-builder-dev \
+aws lambda invoke --function-name community-vector-embedder-builder-dev \
   --payload '{"threadIds":["thread-id-1","thread-id-2"]}' /dev/stdout
 ```
 

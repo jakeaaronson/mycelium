@@ -1,6 +1,6 @@
 ---
 name: reflect
-description: Evolve pyramid documentation from session history. Three levels — quick fix, deep analysis, or architectural rethink.
+description: Evolve project documentation by reading sessions and thinking about what context would have helped. Three levels — quick fix, deep analysis, or architectural rethink.
 argument-hint: "[1|2|3|undo|dry-run] [optional: project or focus area]"
 allowed-tools: Read, Grep, Glob, Bash, Write, Edit
 ---
@@ -14,215 +14,118 @@ Parse the arguments from: $ARGUMENTS
 - `/reflect` or `/reflect 1` → Level 1
 - `/reflect 2` or `/reflect 2 zeitgeist` → Level 2
 - `/reflect 3` → Level 3
-- `/reflect undo` → Restore from last snapshot (see Undo section)
-- `/reflect dry-run` or `/reflect 1 dry-run` → Preview mode (any level)
-
-**Dry-run mode:** If `dry-run` appears anywhere in the arguments, do ALL the analysis work (read sessions, identify gaps, find the files, write the exact changes) but **do NOT apply them**. Instead, present each proposed change as a numbered list with file path, current text, and proposed text. Then ask: "Apply all? Apply some? Cancel?" Only proceed if the user confirms. Dry-run still creates a snapshot (safety first).
+- `/reflect undo` → `cd MYCELIUM_DIR && git revert HEAD` (confirm with user first)
+- `/reflect dry-run` or `/reflect 1 dry-run` → Preview mode: do all analysis, present proposed changes as a numbered list, only apply after user confirms.
 
 ---
 
-## Before ANYTHING Else — Snapshot (Level 1 and 2 only)
+## Before ANYTHING Else — Git Checkpoint
 
-**This runs before every Level 1 and Level 2 reflect. No exceptions.**
-
-**Level 3 skips this step and uses git instead** (see Level 3 section).
-
-Before editing any file, create a snapshot of everything you might touch:
+**All levels.** Before editing any file:
 
 ```bash
-SNAP_DIR="$HOME/mycelium/snapshots/$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$SNAP_DIR"
-
-# Snapshot all pyramid docs across all projects
-for project_dir in ~/activecomply-api ~/thezeitgeistexperiment ~/dashboard-app ~/survey-app ~/dev-agents; do
-  if [ -f "$project_dir/CLAUDE.md" ]; then
-    proj=$(basename "$project_dir")
-    mkdir -p "$SNAP_DIR/$proj"
-    cp "$project_dir/CLAUDE.md" "$SNAP_DIR/$proj/"
-    [ -d "$project_dir/docs/playbooks" ] && cp -r "$project_dir/docs/playbooks" "$SNAP_DIR/$proj/"
-    [ -d "$project_dir/docs/reference" ] && cp -r "$project_dir/docs/reference" "$SNAP_DIR/$proj/"
-  fi
-done
-
-# Snapshot framework docs (for level 3)
-mkdir -p "$SNAP_DIR/_framework"
-cp ~/mycelium/README.md "$SNAP_DIR/_framework/" 2>/dev/null || true
-cp ~/mycelium/feedback-loop/reflect-skill/SKILL.md "$SNAP_DIR/_framework/" 2>/dev/null || true
-cp ~/mycelium/feedback-loop/session-end-log.sh "$SNAP_DIR/_framework/" 2>/dev/null || true
-
-# Record metadata
-echo "{\"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"level\": \"$LEVEL\", \"args\": \"$ARGUMENTS\"}" > "$SNAP_DIR/meta.json"
-
-echo "Snapshot saved: $SNAP_DIR"
+cd MYCELIUM_DIR && git add -A && git commit -m "pre-reflect: checkpoint" --allow-empty
 ```
 
-Tell the user: "Snapshot saved. If you want to undo this reflect, run `/reflect undo`."
+Tell the user: "Checkpoint saved. Undo with `/reflect undo`."
 
 ---
 
-## Level 1 — Quick Reflect (default)
+## Step 0 — Analyze the Current Session (all levels)
 
-**Scope:** Current conversation + any flagged sessions since last reflect.
-**Time:** Fast. Apply obvious fixes, skip anything ambiguous.
-**Changes:** Edits to existing playbooks and references only. No structural changes.
+The current conversation is invisible to session history. **Always do this step first.**
+
+Read back through your own conversation and ask:
+
+1. **What did I not know at the start that I had to discover?**
+2. **Where did the user correct my approach?** — Not just "no" — also redirections, abandoned paths.
+3. **What took many turns that could have taken fewer?**
+4. **What did the user have to repeat from a previous session?**
+
+For each finding, note the specific knowledge gap and which doc file should contain it.
+
+**These findings are your highest-quality input** — treat them with more weight than history, because you have full context.
+
+---
+
+## Reading Sessions
+
+Use the read-session helper: `python3 MYCELIUM_DIR/feedback-loop/read-session.py SESSION_FILE --long`
+
+Session history is at `~/.claude/session-history.jsonl`. Each record has: `timestamp`, `project`, `user_messages`, `tool_calls`, `reviewed`, `session_file`.
+
+When reading a session, think about it as a whole story:
+- What was the user trying to accomplish?
+- Where did the session get stuck or go sideways?
+- What context at the start would have made the whole thing smoother?
+- What's generalizable vs. one-off?
+
+---
+
+## Level 1 — What Did I Just Learn? (default)
+
+**Question:** "What did I learn in recent sessions that should be written down?"
+**Scope:** Current conversation + 3-5 recent unreviewed sessions.
+**Changes:** Edits to existing files only. No structural changes.
 
 ### Steps
 
-1. Read `~/.claude/session-history.jsonl`, find entries with `needs_review: true` AND `reviewed: false`:
-
-```bash
-python3 -c "
-import json, sys
-sessions = [json.loads(l) for l in open('$HOME/.claude/session-history.jsonl')]
-pending = [s for s in sessions if s.get('needs_review') and not s.get('reviewed')]
-pending.sort(key=lambda s: s.get('score', 0), reverse=True)
-for s in pending[:10]:
-    sig = s.get('signals', {})
-    print(f\"  [{s['score']:3d}] {s['project']:20s} corr={sig.get('corrections',0)} reexp={sig.get('reexplanations',0)} frust={sig.get('frustrations',0)} overflow={sig.get('overflows',0)} reads={sig.get('repeated_reads',0)}\")
-print(f'\n  {len(pending)} total pending')
-"
-```
-
-2. For the top 5 highest-scoring sessions, read the conversation and identify:
-   - What knowledge was missing from the docs
-   - What the user had to repeat or correct
-
-3. For each gap, edit the relevant playbook or reference file directly. Only make changes you're confident about.
-
-4. Mark reviewed sessions and log changes (see Finishing Steps below).
+1. Do Step 0 (analyze current session).
+2. List unreviewed sessions from `session-history.jsonl`. Pick 3-5 with meaningful activity.
+3. Read each conversation. For each: what knowledge was missing? What would have made it shorter?
+4. For each gap, edit the relevant doc file. Only changes you're confident will help future sessions.
+5. Finishing Steps.
 
 ---
 
-## Level 2 — Deep Analysis
+## Level 2 — Are We Documenting the Right Things?
 
-**Scope:** Full session history replay. Rethink playbook organization and content.
-**Time:** Slow. Read many sessions, look for patterns across sessions, not just individual signals.
-**Changes:** Can restructure playbooks, create new ones, merge redundant ones, rewrite sections.
+**Question:** "Are the playbooks organized around the actual work?"
+**Scope:** Full session history for a project. Rethink structure.
+**Changes:** Can restructure — create, merge, split, delete playbooks, rewrite routing tables.
 
 ### Steps
 
-1. Read ALL sessions from `~/.claude/session-history.jsonl` (not just flagged ones):
-
-```bash
-python3 -c "
-import json
-sessions = [json.loads(l) for l in open('$HOME/.claude/session-history.jsonl')]
-by_project = {}
-for s in sessions:
-    p = s.get('project', 'unknown')
-    by_project.setdefault(p, []).append(s)
-for p, ss in sorted(by_project.items(), key=lambda x: -len(x[1])):
-    flagged = sum(1 for s in ss if s.get('needs_review'))
-    total_sig = sum(s.get('total_signals', 0) for s in ss)
-    avg_score = sum(s.get('score', 0) for s in ss) / max(len(ss), 1)
-    print(f'  {p:20s}  {len(ss):3d} sessions  {flagged:2d} flagged  {total_sig:3d} signals  avg={avg_score:.0f}')
-"
-```
-
-2. For the project with the most signals (or the one specified in arguments), read 10-15 sessions — especially the highest-scoring ones. Extract conversations using:
-
-```bash
-python3 -c "
-import json
-for line in open('SESSION_FILE_PATH'):
-    try:
-        obj = json.loads(line)
-        if obj.get('type') not in ('user', 'assistant'): continue
-        content = obj.get('message', {}).get('content', '')
-        if isinstance(content, str) and len(content) > 15 and not content.startswith('<'):
-            print(f'[{obj[\"type\"]}] {content[:500]}')
-            print()
-        elif isinstance(content, list):
-            for c in content:
-                if isinstance(c, dict) and c.get('type') == 'text' and len(c.get('text','')) > 15:
-                    print(f'[{obj[\"type\"]}] {c[\"text\"][:500]}')
-                    print()
-    except: pass
-"
-```
-
-3. Look for **patterns**, not just individual gaps:
-   - Are multiple playbooks covering overlapping territory? → Merge them
-   - Is one playbook referenced by many sessions but missing key info? → Expand it
-   - Are there task types that have no playbook but come up often? → Create one
-   - Is CLAUDE.md over 50 lines? → Push content down to playbooks
-   - Are reference sheets being loaded that could be simpler? → Trim them
-
-4. Think about the **optimal layout** of the pyramid for this project:
-   - What are the actual top 5 task types? (not what we assumed — what the data shows)
+1. Do Step 0 (analyze current session).
+2. Get session history overview (by project, counts, unreviewed).
+3. For the target project (from arguments, or most unreviewed), read 10-15 sessions thoroughly.
+4. Step back and think about the big picture:
+   - What are the actual top 5 task types? (From sessions, not assumptions.)
+   - Does each common task type have a playbook? Any playbooks for tasks that never happen?
+   - What knowledge keeps being rediscovered?
+   - Is CLAUDE.local.md over 50 lines? What can move to playbooks?
    - Does the routing table match reality?
-   - Are the Level 0 hard rules still the right ones?
-
-5. Restructure as needed. Create, merge, split, or delete playbooks. Rewrite the routing table if needed.
-
-6. Finish with Finishing Steps below.
+5. Think about the ideal state. Restructure toward it.
+6. Finishing Steps.
 
 ---
 
-## Level 3 — Architectural Rethink
+## Level 3 — Is This System Actually Working?
 
-**Scope:** The framework itself. Question the pyramid structure, the signal detection, the feedback loop.
-**Time:** Very slow. This is a contribution to the project, not just personal doc maintenance.
-**Changes:** Can modify templates, build scripts, the hook, the /reflect skill itself, README, anything.
-**Who:** Project maintainers and contributors only.
-
-### IMPORTANT: Level 3 does NOT use the snapshot system.
-
-Level 3 can modify the snapshot/undo system itself (this SKILL.md, the hook, the build scripts). Snapshotting code that you're about to rewrite creates a paradox — the old snapshot might not be restorable with the new undo code.
-
-**Instead, Level 3 uses git:**
-
-```bash
-cd ~/mycelium
-git add -A && git commit -m "pre-reflect-3: checkpoint before architectural rethink"
-```
-
-To undo a Level 3 reflect:
-```bash
-cd ~/mycelium
-git diff HEAD~1   # See what changed
-git revert HEAD   # Undo it
-```
-
-**Skip the "Before ANYTHING Else — Snapshot" step for Level 3. Use git instead.**
+**Question:** "Is mycelium itself making sessions better?"
+**Scope:** The framework — hook, /reflect, tooling, this SKILL.md, everything.
+**Changes:** Can modify anything in MYCELIUM_DIR.
 
 ### Steps
 
-1. **Git checkpoint first** (see above).
-
-2. Do Level 2 analysis first — read session history, identify patterns.
-
-3. Then step back and evaluate the **framework itself**:
-
-   - **Is the 3-level pyramid the right structure?** Maybe some projects need 2 levels. Maybe some need 4. Look at which levels actually get used.
-
-   - **Are the signal detection patterns right?** Read 20+ flagged sessions. Were they correctly flagged? Are there false positives (flagged but nothing was actually wrong)? Are there false negatives (real problems that weren't flagged)?
-
-   - **Is the routing table concept working?** Does the model actually read the playbook before starting work? Or does it skip the routing table and just dive in?
-
-   - **What's the optimal CLAUDE.md size?** We said 50 lines. Is that right? Could it be 30? Could it be 80? Look at which sessions had the fewest corrections and what their L0 size was.
-
-   - **Is /reflect itself working?** Are the changes it makes actually improving things? Check the feedback-log.md — are signal scores declining over time?
-
-4. Propose changes to the framework:
-   - Template modifications → `templates/`
-   - Build script improvements → `build-viewer.py`, `build-project-viewer.py`
-   - Hook improvements → `feedback-loop/session-end-log.sh`
-   - This skill itself → `feedback-loop/reflect-skill/SKILL.md`
-   - README updates → `README.md`
-   - New documentation → `docs/`
-
-5. Write a detailed entry in `~/mycelium/feedback-log.md` explaining:
-   - What data led to the conclusion
-   - What was changed and why
-   - What the expected impact is
-   - How to measure if it worked
-
-6. Commit the changes as a proper git commit (not a snapshot):
-```bash
-cd ~/mycelium
-git add -A && git commit -m "reflect-3: [description of architectural change]"
-```
+1. Git checkpoint (already done above).
+2. Read 15-20 sessions across projects. Read `feedback-log.md` for past reflect changes.
+3. **Evaluate whether the system is helping:**
+   - Do sessions get shorter/smoother over time for the same task types?
+   - Are there tasks that keep going poorly despite having playbooks?
+   - Are there sessions where the AI had good docs but ignored them?
+4. **Question the design.** Is the architecture right? Consider:
+   - Is the hook capturing what's needed? Too much? Too little?
+   - Does the pyramid structure fit each project?
+   - Does /reflect itself have flaws?
+   - Is there unnecessary complexity that should be removed?
+   - Is there a missing capability that should be built?
+5. **Think about efficiency holistically.** The goal is "AI sessions that accomplish more with less friction":
+   - Is maintenance time justified by session improvement?
+   - Is /reflect making changes that actually matter, or churning?
+   - What's the highest-leverage change right now?
+6. Make changes. Document reasoning in `feedback-log.md`.
+7. Commit: `cd MYCELIUM_DIR && git add -A && git commit -m "reflect-3: [description]"`
 
 ---
 
@@ -230,109 +133,40 @@ git add -A && git commit -m "reflect-3: [description of architectural change]"
 
 ### Mark Sessions Reviewed
 
-```bash
-python3 -c "
-import json
-lines = open('$HOME/.claude/session-history.jsonl').readlines()
-reviewed_ids = set()  # Add the session IDs you actually read
-updated = []
-for line in lines:
-    s = json.loads(line.strip())
-    if s.get('session_id') in reviewed_ids:
-        s['reviewed'] = True
-    updated.append(json.dumps(s))
-with open('$HOME/.claude/session-history.jsonl', 'w') as f:
-    f.write('\n'.join(updated) + '\n')
-print(f'Marked {len(reviewed_ids)} sessions as reviewed')
-"
-```
+Update `session-history.jsonl` — set `reviewed: true` for each session ID you actually read. Also mark any zero-message sessions as reviewed (they're noise).
 
 ### Log What Changed
 
-Append to `~/mycelium/feedback-log.md`:
+Append to `MYCELIUM_DIR/feedback-log.md`. Keep entries **compact** (3-5 lines max) — git commits have the detail:
 
 ```
 ## YYYY-MM-DD — /reflect level N
-
-Sessions reviewed: N
-Changes made:
-- [file]: [what changed and why]
-
-Signals resolved: N corrections, N re-explanations, N frustrations
+Sessions: N reviewed. Changes: [file1] (what), [file2] (what). Key finding: [one sentence].
 ```
 
-### Rebuild Viewers (if docs changed)
+If the log exceeds ~100 lines, archive older entries to `feedback-log-archive.md`.
 
-```bash
-python3 ~/mycelium/build-viewer.py
-python3 ~/mycelium/build-project-viewer.py
-```
+---
 
-## Undo
+## When to Reflect
 
-**`/reflect undo` restores Level 1 and Level 2 changes only** (project docs: CLAUDE.md, playbooks, references).
+Don't over-maintain. Diminishing returns set in fast.
 
-**It cannot undo Level 3 changes** (framework code). For Level 3, use `git revert HEAD` in the `~/mycelium` repo.
+- **Level 1**: Weekly, or after a session with obvious friction. Skip if <3 unreviewed sessions.
+- **Level 2**: Monthly, or when a project's task types have shifted. One project at a time.
+- **Level 3**: Quarterly, or when the system feels like it's not helping.
 
-If the argument is `undo` (i.e. user ran `/reflect undo`), restore from the most recent snapshot:
-
-```bash
-# Find the latest snapshot
-LATEST=$(ls -td ~/mycelium/snapshots/*/ 2>/dev/null | head -1)
-if [ -z "$LATEST" ]; then
-  echo "No snapshots found. Nothing to undo."
-  exit 0
-fi
-
-echo "Latest snapshot: $LATEST"
-echo "Created: $(cat "$LATEST/meta.json" 2>/dev/null || echo 'unknown')"
-echo ""
-```
-
-Then show the user what will be restored:
-```bash
-echo "Files that will be restored:"
-find "$LATEST" -name "*.md" -o -name "*.sh" | sed "s|$LATEST||" | sort
-```
-
-Ask the user to confirm. If they confirm:
-
-```bash
-# Restore each project's files
-for proj_dir in "$LATEST"/*/; do
-  proj=$(basename "$proj_dir")
-  if [ "$proj" = "_framework" ]; then
-    # Framework files go back to ~/mycelium/
-    [ -f "$proj_dir/README.md" ] && cp "$proj_dir/README.md" ~/mycelium/
-    [ -f "$proj_dir/SKILL.md" ] && cp "$proj_dir/SKILL.md" ~/mycelium/feedback-loop/reflect-skill/ && cp "$proj_dir/SKILL.md" ~/.claude/skills/reflect/
-    [ -f "$proj_dir/session-end-log.sh" ] && cp "$proj_dir/session-end-log.sh" ~/mycelium/feedback-loop/ && cp "$proj_dir/session-end-log.sh" ~/.claude/hooks/
-  else
-    # Project files go back to ~/$project/
-    TARGET="$HOME/$proj"
-    [ -f "$proj_dir/CLAUDE.md" ] && cp "$proj_dir/CLAUDE.md" "$TARGET/"
-    [ -d "$proj_dir/playbooks" ] && cp -r "$proj_dir/playbooks/"* "$TARGET/docs/playbooks/" 2>/dev/null || true
-    [ -d "$proj_dir/reference" ] && cp -r "$proj_dir/reference/"* "$TARGET/docs/reference/" 2>/dev/null || true
-  fi
-done
-
-echo "Restored from: $(basename $LATEST)"
-```
-
-After restoring, rebuild the viewers:
-```bash
-python3 ~/mycelium/build-viewer.py
-python3 ~/mycelium/build-project-viewer.py
-```
-
-The snapshot directory is kept (not deleted) so you can undo the undo if needed. Old snapshots can be cleaned up manually from `~/mycelium/snapshots/`.
+If you just ran a reflect and there are <5 unreviewed sessions, stop. The system is fine.
 
 ---
 
 ## Rules
 
-- **Level 1**: Only edit existing files. No structural changes. Fast and safe.
-- **Level 2**: Can restructure. But always explain why in the feedback log.
-- **Level 3**: Can change anything. But must document the reasoning thoroughly.
-- All levels: CLAUDE.md stays under 50 lines. Don't document what the model can find in code.
+- **Level 1**: Only edit existing files. No structural changes.
+- **Level 2**: Can restructure. Explain why in the feedback log.
+- **Level 3**: Can change anything. Document reasoning thoroughly.
+- All levels: CLAUDE.local.md stays under 50 lines. Never edit CLAUDE.md (team-owned).
 - All levels: Update the routing table when creating/deleting playbooks.
-- All levels: Snapshot FIRST. Always. No exceptions.
+- All levels: Git checkpoint FIRST. No exceptions.
+- **Core question for every change: "What would the AI have needed to know at the start of that session to make it go better?"** If you can't answer that concretely, don't make the change.
+- **Cross-project memory principle**: CLAUDE.local.md is visible from all sessions in that directory tree. Memory files are only visible in their own project. When a fact is needed across projects (VPN, credentials, shared services), keep a minimal version in CLAUDE.local.md and a detailed version in one project's memory. Never assume other projects can read another project's memory files.

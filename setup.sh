@@ -1,37 +1,21 @@
 #!/bin/bash
 # ╔══════════════════════════════════════════════════════════════╗
-# ║        Mycelium — Setup Wizard            ║
+# ║  Mycelium Setup Wizard                                      ║
 # ║                                                             ║
-# ║  Interactive setup that walks you through:                  ║
-# ║    1. What this is and how it works                         ║
-# ║    2. Analyzing your current CLAUDE.md                      ║
-# ║    3. Creating the pyramid directory structure              ║
-# ║    4. Installing the feedback loop (hook + /reflect)        ║
-# ║    5. Backfilling session history                           ║
-# ║    6. Creating your first backup/restore point              ║
+# ║  Self-improving memory and documentation system for AI      ║
+# ║  coding agents. Hierarchical memory for non-hierarchical    ║
+# ║  organizations.                                             ║
 # ╚══════════════════════════════════════════════════════════════╝
 #
 # Usage:
 #   ./setup.sh                    # Full interactive wizard
 #   ./setup.sh --feedback-only    # Only install hook + /reflect
-#   ./setup.sh --uninstall        # Remove hook, skills, and cron
+#   ./setup.sh --uninstall        # Remove everything
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
-
-# ── Uninstall ──
-if [[ "${1:-}" == "--uninstall" ]]; then
-  echo "Uninstalling Mycelium..."
-  rm -f "$CLAUDE_DIR/hooks/session-end-log.sh"
-  rm -rf "$CLAUDE_DIR/skills/reflect"
-  rm -rf "$CLAUDE_DIR/skills/status"
-  crontab -l 2>/dev/null | grep -v "mycelium" | crontab - 2>/dev/null || true
-  echo "Removed: hook, /reflect, /status, cron (if any)"
-  echo "Kept: session-history.jsonl, backups, snapshots, docs"
-  exit 0
-fi
 
 # ── Colors ──
 R='\033[0;31m'
@@ -45,7 +29,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # ── Helpers ──
-hr() { echo -e "${DIM}$(printf '─%.0s' {1..60})${NC}"; }
+hr() { echo -e "${DIM}$(printf '~%.0s' {1..60})${NC}"; }
 ask() {
   local prompt="$1" default="${2:-}"
   if [ -n "$default" ]; then
@@ -65,341 +49,557 @@ pause() {
   read -p "$(echo -e "  ${DIM}Press Enter to continue...${NC}")"
 }
 
+# ── Uninstall ──
+if [[ "${1:-}" == "--uninstall" ]]; then
+  echo ""
+  echo -e "  ${BOLD}Mycelium Uninstall${NC}"
+  echo ""
+
+  # Remove feedback loop
+  echo -e "  ${G}[1/2]${NC} Removing feedback loop..."
+  rm -f "$CLAUDE_DIR/hooks/session-end-log.sh"
+  rm -rf "$CLAUDE_DIR/skills/reflect"
+  rm -rf "$CLAUDE_DIR/skills/status"
+  echo "    Removed: hook, /reflect, /status"
+
+  # Find and restore project backups
+  echo -e "  ${G}[2/2]${NC} Checking for project backups..."
+  RESTORED=0
+  while IFS= read -r -d '' backup_dir; do
+    project_dir=$(dirname "$backup_dir")
+    project=$(basename "$project_dir")
+    # Find the backed-up instruction file
+    for f in "$backup_dir"/*; do
+      [ -f "$f" ] || continue
+      fname=$(basename "$f")
+      target="$project_dir/$fname"
+      echo -e "    Found backup: ${BOLD}$project${NC}/$fname"
+      echo -n "    "
+      read -p "$(echo -e "${C}Restore original $fname? [Y/n]:${NC} ")" yn
+      case "$yn" in
+        [Nn]*) echo "    Skipped." ;;
+        *)
+          cp "$f" "$target"
+          echo -e "    ${G}Restored.${NC}"
+          RESTORED=$((RESTORED + 1))
+          ;;
+      esac
+    done
+  done < <(find "$HOME" -maxdepth 4 -type d -name ".pyramid-backup" -print0 2>/dev/null)
+
+  if [ "$RESTORED" -eq 0 ]; then
+    echo "    No project backups found (or all skipped)."
+    echo "    No backups to restore."
+  fi
+
+  # Ask about removing pyramid directories
+  echo ""
+  echo -n "  "
+  read -p "$(echo -e "${C}Also remove docs/playbooks/ and docs/reference/ from projects? [y/N]:${NC} ")" yn
+  case "$yn" in
+    [Yy]*)
+      while IFS= read -r -d '' pb_dir; do
+        project_dir=$(dirname "$(dirname "$pb_dir")")
+        project=$(basename "$project_dir")
+        rm -rf "$project_dir/docs/playbooks" "$project_dir/docs/reference"
+        # Remove docs/ if empty
+        rmdir "$project_dir/docs" 2>/dev/null || true
+        echo "    Removed pyramid dirs from $project"
+      done < <(find "$HOME" -maxdepth 5 -type d -name "playbooks" -path "*/docs/playbooks" -print0 2>/dev/null)
+      ;;
+    *) echo "    Kept project directories." ;;
+  esac
+
+  echo ""
+  echo -e "  ${G}Uninstall complete.${NC}"
+  echo "  Kept: session-history.jsonl, ~/mycelium/ repo"
+  echo ""
+  exit 0
+fi
+
+SKIP_TO_FEEDBACK=false
+if [[ "${1:-}" == "--feedback-only" ]]; then
+  SKIP_TO_FEEDBACK=true
+fi
+
 # ═══════════════════════════════════════════════════════════════
-# STEP 0: Welcome
+# WELCOME
 # ═══════════════════════════════════════════════════════════════
 
 clear
 echo ""
 echo -e "  ${BOLD}Mycelium${NC}"
-echo -e "  ${DIM}Setup Wizard${NC}"
+echo -e "  ${DIM}Self-improving memory for AI coding agents${NC}"
 echo ""
 hr
 echo ""
-echo -e "  This wizard will set up a ${BOLD}pyramid documentation system${NC}"
-echo -e "  that makes your AI coding assistant work better by loading"
-echo -e "  ${G}less, more relevant${NC} context instead of everything at once."
+echo -e "  Your AI assistant forgets everything between conversations."
+echo -e "  Mycelium fixes that by loading ${G}only what's relevant${NC} and"
+echo -e "  getting smarter every session."
 echo ""
-echo -e "  ${BOLD}The problem:${NC} CLAUDE.md files grow over time. A 400-line"
-echo -e "  CLAUDE.md means the model processes 400 lines on every"
-echo -e "  conversation, even when only 30 are relevant."
+echo -e "  This wizard will:"
+echo -e "    1. Ask which AI tool(s) you use"
+echo -e "    2. Find your projects"
+echo -e "    3. Analyze and split bloated instruction files"
+echo -e "    4. Install the feedback loop"
 echo ""
-echo -e "  ${BOLD}The solution:${NC} A pyramid with 3 levels:"
-echo ""
-echo -e "    ${Y}Level 0${NC}  CLAUDE.md       ~50 lines, always loaded"
-echo -e "    ${B}Level 1${NC}  Playbooks       loaded per task type"
-echo -e "    ${P}Level 2${NC}  Reference       loaded when a playbook points to it"
-echo ""
-echo -e "  Plus a ${G}feedback loop${NC} that evolves the docs over time."
+echo -e "  Everything is reversible. Backups are created before any changes."
 echo ""
 hr
 echo ""
-
-if [[ "${1:-}" == "--feedback-only" ]]; then
-  # Jump straight to feedback loop install
-  SKIP_TO_FEEDBACK=true
-else
-  SKIP_TO_FEEDBACK=false
-fi
-
-# ═══════════════════════════════════════════════════════════════
-# STEP 1: Discover projects
-# ═══════════════════════════════════════════════════════════════
 
 if [ "$SKIP_TO_FEEDBACK" = false ]; then
 
-echo -e "  ${BOLD}Step 1: Find your projects${NC}"
+# ═══════════════════════════════════════════════════════════════
+# STEP 1: Which AI tool(s)?
+# ═══════════════════════════════════════════════════════════════
+
+echo -e "  ${BOLD}Step 1: Which AI tool(s) do you use?${NC}"
+echo ""
+echo "    1) Claude Code     (CLAUDE.md)"
+echo "    2) Codex / OpenAI  (AGENTS.md)"
+echo "    3) Gemini CLI      (GEMINI.md)"
+echo "    4) Cursor          (.cursor/rules/)"
+echo "    5) Cline           (.clinerules/)"
+echo "    6) Windsurf        (.windsurfrules)"
+echo "    7) Goose           (.goosehints)"
+echo "    8) GitHub Copilot  (copilot-instructions.md)"
+echo "    9) All / not sure  (scan for everything)"
+echo ""
+TOOL_CHOICE=$(ask "Select tools, comma-separated" "9")
+
+# Build list of filenames to scan for
+SCAN_FILES=()
+IFS=',' read -ra SELECTIONS <<< "$TOOL_CHOICE"
+for sel in "${SELECTIONS[@]}"; do
+  sel=$(echo "$sel" | tr -d ' ')
+  case "$sel" in
+    1) SCAN_FILES+=("CLAUDE.md") ;;
+    2) SCAN_FILES+=("AGENTS.md") ;;
+    3) SCAN_FILES+=("GEMINI.md" "AGENT.md") ;;
+    4) SCAN_FILES+=(".cursorrules") ;;
+    5) SCAN_FILES+=(".clinerules") ;;
+    6) SCAN_FILES+=(".windsurfrules") ;;
+    7) SCAN_FILES+=(".goosehints") ;;
+    8) SCAN_FILES+=("copilot-instructions.md") ;;
+    9|*) SCAN_FILES=("CLAUDE.md" "AGENTS.md" "GEMINI.md" ".cursorrules" ".goosehints" ".windsurfrules" ".clinerules" "copilot-instructions.md") ;;
+  esac
+done
+
+# Deduplicate
+SCAN_FILES=($(printf '%s\n' "${SCAN_FILES[@]}" | sort -u))
+
 echo ""
 
-# Scan for CLAUDE.md files
-CLAUDE_FILES=()
-while IFS= read -r -d '' f; do
-  CLAUDE_FILES+=("$f")
-done < <(find "$HOME" -maxdepth 3 -name "CLAUDE.md" -not -path "*/.claude/*" -not -path "*/node_modules/*" -not -path "*/mycelium/*" -print0 2>/dev/null)
+# ═══════════════════════════════════════════════════════════════
+# STEP 2: Find projects (multiple signals)
+# ═══════════════════════════════════════════════════════════════
 
-if [ ${#CLAUDE_FILES[@]} -eq 0 ]; then
-  echo -e "  ${Y}No CLAUDE.md files found.${NC}"
-  echo "  You can create one later using the templates in templates/"
-  echo ""
-else
-  echo "  Found CLAUDE.md files:"
-  echo ""
-  for i in "${!CLAUDE_FILES[@]}"; do
-    f="${CLAUDE_FILES[$i]}"
-    dir=$(dirname "$f")
-    project=$(basename "$dir")
-    lines=$(wc -l < "$f")
-    if [ "$lines" -gt 80 ]; then
-      status="${R}${lines} lines — would benefit from pyramid${NC}"
-    elif [ "$lines" -gt 50 ]; then
-      status="${Y}${lines} lines — borderline${NC}"
-    else
-      status="${G}${lines} lines — already lean${NC}"
-    fi
-    echo -e "    $((i+1))) ${BOLD}$project${NC} — $status"
-    echo -e "       ${DIM}$f${NC}"
+echo -e "  ${BOLD}Step 2: Finding your projects...${NC}"
+echo ""
+
+# Use associative-style arrays (parallel arrays for bash 3 compat)
+FOUND_PROJECTS=()
+FOUND_FILES=()
+FOUND_LINES=()
+FOUND_SESSIONS=()
+FOUND_SOURCE=()
+
+# Helper: add project if not already found
+add_project() {
+  local dir="$1" file="$2" lines="$3" sessions="$4" source="$5"
+  # Skip mycelium, node_modules, .git, .claude internals, backups
+  case "$dir" in
+    *mycelium*|*node_modules*|*/.git/*|*/.git|*/.claude/*|*.pyramid-backup*|*/backup-*) return ;;
+  esac
+  # Check if already added
+  for existing in "${FOUND_PROJECTS[@]}"; do
+    [ "$existing" = "$dir" ] && return
   done
+  FOUND_PROJECTS+=("$dir")
+  FOUND_FILES+=("$file")
+  FOUND_LINES+=("$lines")
+  FOUND_SESSIONS+=("$sessions")
+  FOUND_SOURCE+=("$source")
+}
+
+# Signal 1: Existing instruction files
+echo -e "  ${DIM}Scanning for instruction files...${NC}"
+for scan_name in "${SCAN_FILES[@]}"; do
+  while IFS= read -r -d '' f; do
+    dir=$(dirname "$f")
+    fname=$(basename "$f")
+    lines=$(wc -l < "$f" 2>/dev/null || echo 0)
+    add_project "$dir" "$fname" "$lines" "?" "instruction file"
+  done < <(find "$HOME" -maxdepth 4 -name "$scan_name" -not -path "*/node_modules/*" -not -path "*/.git/*" -not -path "*/mycelium/*" -not -path "*/.pyramid-backup/*" -not -path "*/backup-*/*" -print0 2>/dev/null)
+done
+
+# Signal 2: Directories with Claude Code session history
+echo -e "  ${DIM}Scanning session history...${NC}"
+if [ -d "$CLAUDE_DIR/projects" ]; then
+  for proj_dir in "$CLAUDE_DIR/projects/"*/; do
+    [ -d "$proj_dir" ] || continue
+    # Decode the project path from the directory name
+    proj_name=$(basename "$proj_dir")
+    # Convert -home-jacob-projectname to /home/jacob/projectname
+    decoded_path=$(echo "$proj_name" | sed 's|^-|/|; s|-|/|g')
+
+    # Only add if the directory actually exists
+    if [ -d "$decoded_path" ]; then
+      session_count=$(find "$proj_dir" -maxdepth 1 -name "*.jsonl" 2>/dev/null | wc -l)
+      if [ "$session_count" -gt 0 ]; then
+        # Check if it already has an instruction file
+        existing_file="none"
+        existing_lines=0
+        for name in "${SCAN_FILES[@]}"; do
+          if [ -f "$decoded_path/$name" ]; then
+            existing_file="$name"
+            existing_lines=$(wc -l < "$decoded_path/$name" 2>/dev/null || echo 0)
+            break
+          fi
+        done
+        add_project "$decoded_path" "$existing_file" "$existing_lines" "$session_count" "session history"
+      fi
+    fi
+  done
+fi
+
+# Signal 3: Git repos in home directory (shallow scan)
+echo -e "  ${DIM}Scanning for git repos...${NC}"
+for gitdir in "$HOME"/*/.git; do
+  [ -d "$gitdir" ] || continue
+  dir=$(dirname "$gitdir")
+  existing_file="none"
+  existing_lines=0
+  for name in "${SCAN_FILES[@]}"; do
+    if [ -f "$dir/$name" ]; then
+      existing_file="$name"
+      existing_lines=$(wc -l < "$dir/$name" 2>/dev/null || echo 0)
+      break
+    fi
+  done
+  add_project "$dir" "$existing_file" "$existing_lines" "?" "git repo"
+done
+
+# Fill in session counts for projects found by other signals
+for i in "${!FOUND_PROJECTS[@]}"; do
+  if [ "${FOUND_SESSIONS[$i]}" = "?" ]; then
+    dir="${FOUND_PROJECTS[$i]}"
+    proj_encoded=$(echo "$dir" | sed 's|/|-|g; s|^-||')
+    if [ -d "$CLAUDE_DIR/projects/-$proj_encoded" ]; then
+      count=$(find "$CLAUDE_DIR/projects/-$proj_encoded" -maxdepth 1 -name "*.jsonl" 2>/dev/null | wc -l)
+      FOUND_SESSIONS[$i]="$count"
+    else
+      FOUND_SESSIONS[$i]="0"
+    fi
+  fi
+done
+
+echo ""
+
+if [ ${#FOUND_PROJECTS[@]} -eq 0 ]; then
+  echo -e "  ${Y}No projects found.${NC}"
+  echo ""
+  echo "  You can add a project manually:"
+  echo "    mkdir -p ~/my-project/docs/playbooks ~/my-project/docs/reference"
+  echo ""
+  pause
+else
+  echo "  Found ${#FOUND_PROJECTS[@]} project(s):"
+  echo ""
+  for i in "${!FOUND_PROJECTS[@]}"; do
+    dir="${FOUND_PROJECTS[$i]}"
+    file="${FOUND_FILES[$i]}"
+    lines="${FOUND_LINES[$i]}"
+    sessions="${FOUND_SESSIONS[$i]}"
+    project=$(basename "$dir")
+
+    # Build status string
+    if [ "$file" = "none" ]; then
+      file_status="${DIM}no instruction file${NC}"
+    elif [ "$lines" -gt 80 ]; then
+      file_status="${R}${file} ${lines}L . needs work${NC}"
+    elif [ "$lines" -gt 50 ]; then
+      file_status="${Y}${file} ${lines}L . borderline${NC}"
+    else
+      file_status="${G}${file} ${lines}L${NC}"
+    fi
+
+    if [ "$sessions" -gt 10 ]; then
+      session_status="${G}${sessions} sessions${NC}"
+    elif [ "$sessions" -gt 0 ]; then
+      session_status="${Y}${sessions} sessions${NC}"
+    else
+      session_status="${DIM}no history${NC}"
+    fi
+
+    echo -e "    $((i+1))) ${BOLD}$project${NC}"
+    echo -e "       $file_status . $session_status"
+    echo -e "       ${DIM}$dir${NC}"
+  done
+
+  # Option to add more
+  echo ""
+  echo -e "  ${DIM}To add a project not listed, enter its path at the prompt.${NC}"
   echo ""
 
   # ═══════════════════════════════════════════════════════════════
-  # STEP 2: Pick a project to set up
+  # STEP 3: Pick projects
   # ═══════════════════════════════════════════════════════════════
 
-  echo -e "  ${BOLD}Step 2: Choose a project to set up${NC}"
+  echo -e "  ${BOLD}Step 3: Which projects to set up?${NC}"
   echo ""
+  echo "  Enter numbers (comma-separated), 'a' for all, 's' to skip,"
+  echo "  or a path to add a project not listed (e.g. ~/my-project)"
+  echo ""
+  PROJECT_CHOICE=$(ask "Projects" "a")
 
-  if [ ${#CLAUDE_FILES[@]} -eq 1 ]; then
-    CHOICE=1
-    echo "  Only one project found — using it."
+  SELECTED_INDICES=()
+  if [[ "$PROJECT_CHOICE" == "a" ]]; then
+    for i in "${!FOUND_PROJECTS[@]}"; do SELECTED_INDICES+=("$i"); done
+  elif [[ "$PROJECT_CHOICE" == "s" ]]; then
+    : # skip
+  elif [[ "$PROJECT_CHOICE" == /* ]] || [[ "$PROJECT_CHOICE" == ~* ]]; then
+    # User entered a path. Expand ~ and add it.
+    CUSTOM_PATH=$(eval echo "$PROJECT_CHOICE")
+    if [ -d "$CUSTOM_PATH" ]; then
+      add_project "$CUSTOM_PATH" "none" "0" "0" "manual"
+      SELECTED_INDICES+=("$((${#FOUND_PROJECTS[@]} - 1))")
+      echo -e "  ${G}Added: $CUSTOM_PATH${NC}"
+    else
+      echo -e "  ${R}Directory not found: $CUSTOM_PATH${NC}"
+    fi
   else
-    CHOICE=$(ask "Which project? [1-${#CLAUDE_FILES[@]}, or 's' to skip]" "1")
+    IFS=',' read -ra PICKS <<< "$PROJECT_CHOICE"
+    for pick in "${PICKS[@]}"; do
+      pick=$(echo "$pick" | tr -d ' ')
+      if [[ "$pick" =~ ^[0-9]+$ ]]; then
+        idx=$((pick - 1))
+        if [ "$idx" -ge 0 ] && [ "$idx" -lt ${#FOUND_PROJECTS[@]} ]; then
+          SELECTED_INDICES+=("$idx")
+        fi
+      fi
+    done
   fi
 
-  if [[ "$CHOICE" != "s" ]]; then
-    idx=$((CHOICE - 1))
-    TARGET_FILE="${CLAUDE_FILES[$idx]}"
-    TARGET_DIR=$(dirname "$TARGET_FILE")
-    PROJECT_NAME=$(basename "$TARGET_DIR")
-    LINES=$(wc -l < "$TARGET_FILE")
+  # ═══════════════════════════════════════════════════════════════
+  # STEP 4: Prepare each project
+  # ═══════════════════════════════════════════════════════════════
+
+  SETUP_PROJECTS=()
+
+  for idx in "${SELECTED_INDICES[@]}"; do
+    dir="${FOUND_PROJECTS[$idx]}"
+    file="${FOUND_FILES[$idx]}"
+    lines="${FOUND_LINES[$idx]}"
+    project=$(basename "$dir")
 
     echo ""
     hr
     echo ""
-    echo -e "  ${BOLD}Step 3: Analyze $PROJECT_NAME${NC}"
-    echo ""
-    echo -e "  Current CLAUDE.md: ${BOLD}$LINES lines${NC}"
-    echo ""
-
-    if [ "$LINES" -le 50 ]; then
-      echo -e "  ${G}Already under 50 lines — nice!${NC}"
-      echo "  You may not need to restructure, but the playbook"
-      echo "  system can still help organize task-specific knowledge."
-    elif [ "$LINES" -le 100 ]; then
-      echo -e "  ${Y}Moderate size.${NC} Probably has some reference material"
-      echo "  that could be moved to playbooks."
+    echo -e "  ${BOLD}Setting up: $project${NC}"
+    if [ "$file" != "none" ]; then
+      echo -e "  ${DIM}$dir/$file ($lines lines)${NC}"
     else
-      echo -e "  ${R}Large file.${NC} Almost certainly has tutorial content,"
-      echo "  reference tables, and edge-case instructions that"
-      echo "  should move to Level 1 playbooks or Level 2 references."
+      echo -e "  ${DIM}$dir (no instruction file yet)${NC}"
     fi
     echo ""
 
-    # Show section breakdown
-    echo "  Sections found:"
-    grep -n "^## " "$TARGET_FILE" 2>/dev/null | head -15 | while read line; do
-      linenum=$(echo "$line" | cut -d: -f1)
-      section=$(echo "$line" | cut -d: -f2- | sed 's/^## //')
-      echo -e "    ${DIM}L${linenum}${NC}  $section"
-    done
-    echo ""
-
-    # ═══════════════════════════════════════════════════════════════
-    # STEP 4: Create directory structure
-    # ═══════════════════════════════════════════════════════════════
-
-    echo -e "  ${BOLD}Step 4: Create pyramid structure${NC}"
-    echo ""
-    echo "  This will create:"
-    echo -e "    ${DIM}$TARGET_DIR/docs/playbooks/${NC}  (Level 1 — task guides)"
-    echo -e "    ${DIM}$TARGET_DIR/docs/reference/${NC}  (Level 2 — lookup material)"
-    echo ""
-
-    if confirm "Create these directories?"; then
-      mkdir -p "$TARGET_DIR/docs/playbooks" "$TARGET_DIR/docs/reference"
-      echo -e "  ${G}Created.${NC}"
-    else
-      echo "  Skipped."
-    fi
-    echo ""
-
-    # ═══════════════════════════════════════════════════════════════
-    # STEP 5: Create backup
-    # ═══════════════════════════════════════════════════════════════
-
-    echo -e "  ${BOLD}Step 5: Create restore point${NC}"
-    echo ""
-    echo "  Before making any changes, we'll back up your current"
-    echo "  CLAUDE.md so you can always go back."
-    echo ""
-
-    BACKUP_DIR="$SCRIPT_DIR/backup-$(date +%Y-%m-%d)"
-    if [ -d "$BACKUP_DIR" ]; then
-      echo -e "  ${Y}Backup already exists: $BACKUP_DIR${NC}"
-    else
-      if confirm "Create backup?"; then
-        mkdir -p "$BACKUP_DIR/claude-md-files"
-        cp "$TARGET_FILE" "$BACKUP_DIR/claude-md-files/${PROJECT_NAME}_CLAUDE.md"
-        # Also backup memory if exists
-        MEMORY_DIR="$CLAUDE_DIR/projects/-home-$(whoami)/memory"
-        if [ -d "$MEMORY_DIR" ]; then
-          mkdir -p "$BACKUP_DIR/memory"
-          cp "$MEMORY_DIR"/* "$BACKUP_DIR/memory/" 2>/dev/null || true
-        fi
-        echo -e "  ${G}Backed up to: $BACKUP_DIR${NC}"
-        echo "  Restore anytime with: ./rollback.sh"
+    # Backup original if it exists
+    if [ "$file" != "none" ] && [ -f "$dir/$file" ]; then
+      BACKUP_DIR="$dir/.pyramid-backup"
+      if [ ! -d "$BACKUP_DIR" ]; then
+        mkdir -p "$BACKUP_DIR"
+        cp "$dir/$file" "$BACKUP_DIR/$file"
+        echo -e "  ${G}Backed up:${NC} $file -> .pyramid-backup/$file"
+      else
+        echo -e "  ${DIM}Backup already exists at .pyramid-backup/${NC}"
       fi
     fi
-    echo ""
 
-    # ═══════════════════════════════════════════════════════════════
-    # STEP 6: Copy templates
-    # ═══════════════════════════════════════════════════════════════
+    # Create instruction file if it doesn't exist
+    if [ "$file" = "none" ]; then
+      # Determine filename from tool choice
+      TOOL_FILE="CLAUDE.md"
+      case "${SELECTIONS[0]:-9}" in
+        1) TOOL_FILE="CLAUDE.md" ;;
+        2) TOOL_FILE="AGENTS.md" ;;
+        3) TOOL_FILE="GEMINI.md" ;;
+        7) TOOL_FILE=".goosehints" ;;
+        *) TOOL_FILE="CLAUDE.md" ;;
+      esac
+      echo -e "  Creating ${G}$TOOL_FILE${NC} with minimal template..."
+      cat > "$dir/$TOOL_FILE" << TEMPLATE
+# $(basename "$dir")
 
-    echo -e "  ${BOLD}Step 6: Seed with templates${NC}"
-    echo ""
-    echo "  Want me to copy starter templates into your project?"
-    echo "  You'll customize them with your project's actual content."
-    echo ""
+## Before You Start
 
-    if confirm "Copy playbook + reference templates?"; then
-      if [ ! -f "$TARGET_DIR/docs/playbooks/testing.md" ]; then
-        cp "$SCRIPT_DIR/templates/playbook.md.template" "$TARGET_DIR/docs/playbooks/testing.md"
-        sed -i "s/{Task Name}/Testing/" "$TARGET_DIR/docs/playbooks/testing.md"
-        echo "  → docs/playbooks/testing.md"
-      fi
-      if [ ! -f "$TARGET_DIR/docs/reference/environment.md" ]; then
-        cp "$SCRIPT_DIR/templates/reference.md.template" "$TARGET_DIR/docs/reference/environment.md"
-        sed -i "s/{Topic}/Environment/" "$TARGET_DIR/docs/reference/environment.md"
-        echo "  → docs/reference/environment.md"
-      fi
-      echo -e "  ${G}Templates copied. Edit them with your project's details.${NC}"
-    else
-      echo "  Skipped."
+| Task | Read First |
+|------|-----------|
+| (playbooks will be created by /reflect 2) | docs/playbooks/ |
+TEMPLATE
+      file="$TOOL_FILE"
+      echo -e "  ${G}Created:${NC} $file"
     fi
+
+    # Create pyramid structure
+    mkdir -p "$dir/docs/playbooks" "$dir/docs/reference"
+    echo -e "  ${G}Created:${NC} docs/playbooks/ and docs/reference/"
+
+    # Count existing session history for this project
+    HISTORY="$CLAUDE_DIR/session-history.jsonl"
+    SESSION_COUNT=0
+    if [ -f "$HISTORY" ]; then
+      SESSION_COUNT=$(grep -c "\"$project\"" "$HISTORY" 2>/dev/null || echo 0)
+    fi
+    # Also check raw session files
+    RAW_SESSIONS=$(find "$CLAUDE_DIR/projects/" -maxdepth 2 -name "*.jsonl" -path "*${project}*" 2>/dev/null | wc -l)
+    TOTAL_SESSIONS=$((SESSION_COUNT > RAW_SESSIONS ? SESSION_COUNT : RAW_SESSIONS))
+
+    if [ "$TOTAL_SESSIONS" -gt 5 ]; then
+      echo ""
+      echo -e "  ${G}Found ~$TOTAL_SESSIONS sessions of conversation history.${NC}"
+      echo -e "  That's enough data to build great playbooks."
+    elif [ "$TOTAL_SESSIONS" -gt 0 ]; then
+      echo ""
+      echo -e "  ${Y}Found ~$TOTAL_SESSIONS sessions.${NC} Some data to work with."
+    else
+      echo ""
+      echo -e "  ${DIM}No conversation history found yet.${NC}"
+    fi
+
+    if [ "$lines" -le 50 ]; then
+      echo -e "  ${G}$file is already lean ($lines lines). Good starting point.${NC}"
+    else
+      echo -e "  ${Y}$file is $lines lines. /reflect 2 will analyze your history${NC}"
+      echo -e "  ${Y}and build focused playbooks from your actual usage patterns.${NC}"
+    fi
+
+    SETUP_PROJECTS+=("$dir")
+  done
+
+  # ═══════════════════════════════════════════════════════════════
+  # Summary of what /reflect 2 will do
+  # ═══════════════════════════════════════════════════════════════
+
+  if [ ${#SETUP_PROJECTS[@]} -gt 0 ]; then
     echo ""
-
-    # ═══════════════════════════════════════════════════════════════
-    # STEP 6b: Generate for other tools
-    # ═══════════════════════════════════════════════════════════════
-
     hr
     echo ""
-    echo -e "  ${BOLD}Step 7: AI Tool Adapters${NC}"
+    echo -e "  ${BOLD}What happens next${NC}"
     echo ""
-    echo "  The pyramid works with any AI coding tool. Which do you use?"
-    echo "  (Select all that apply, comma-separated, or press Enter to skip)"
+    echo -e "  Structure is ready. Now the docs need content."
     echo ""
-    echo "    1) Claude Code     (CLAUDE.md)"
-    echo "    2) Codex / OpenAI  (AGENTS.md)"
-    echo "    3) Gemini CLI      (GEMINI.md)"
-    echo "    4) Cursor          (.cursor/rules/)"
-    echo "    5) Cline           (.clinerules/)"
-    echo "    6) Windsurf        (.windsurfrules)"
-    echo "    7) Goose           (.goosehints)"
-    echo "    8) GitHub Copilot  (copilot-instructions.md)"
+    echo -e "  ${G}/reflect 2${NC} will mine your conversation history and:"
+    echo "    . Find commands you run repeatedly -> playbook"
+    echo "    . Find corrections you made        -> playbook rule"
+    echo "    . Find things you re-explained      -> add to docs"
+    echo "    . Find context overflows            -> trim L0"
+    echo "    . Build a routing table             -> add to L0"
     echo ""
-    TOOL_CHOICE=$(ask "Tools" "1")
-
-    if [ -n "$TOOL_CHOICE" ]; then
-      TOOL_MAP=("" "claude-code" "codex" "gemini" "cursor" "cline" "windsurf" "goose" "copilot")
-      IFS=',' read -ra SELECTED <<< "$TOOL_CHOICE"
-      TOOL_ARGS=""
-      for sel in "${SELECTED[@]}"; do
-        sel=$(echo "$sel" | tr -d ' ')
-        if [[ "$sel" =~ ^[1-8]$ ]] && [ -n "${TOOL_MAP[$sel]}" ]; then
-          TOOL_ARGS="${TOOL_MAP[$sel]}"
-          echo -e "  Generating for ${G}${TOOL_MAP[$sel]}${NC}..."
-          python3 "$SCRIPT_DIR/adapters/generate.py" "$TARGET_DIR" --tool "$TOOL_ARGS" 2>/dev/null || echo "  (skipped — run adapters/generate.py manually)"
-        fi
+    echo -e "  The more history you have, the better the playbooks."
+    echo -e "  Run ${G}/reflect 2${NC} in a Claude Code session after setup finishes."
+    echo ""
+    if [ ${#SETUP_PROJECTS[@]} -gt 1 ]; then
+      echo -e "  Run it once per project:"
+      for dir in "${SETUP_PROJECTS[@]}"; do
+        project=$(basename "$dir")
+        echo -e "    ${DIM}cd $dir && /reflect 2${NC}"
       done
+      echo ""
     fi
-
-    hr
-    echo ""
-    echo -e "  ${BOLD}Project structure ready!${NC}"
-    echo ""
-    echo "  Next steps for $PROJECT_NAME:"
-    echo "    1. Read your current CLAUDE.md (or generated instruction file)"
-    echo "    2. Move task-specific content to docs/playbooks/"
-    echo "    3. Move lookup material to docs/reference/"
-    echo "    4. Add a routing table to your L0 file"
-    echo "    5. Trim L0 to ~50 lines"
-    echo ""
-    echo "  See examples/ in this repo for reference."
-    echo ""
     pause
   fi
 
-fi  # end if CLAUDE_FILES found
+fi  # end if projects found
 
 fi  # end SKIP_TO_FEEDBACK
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 7: Install feedback loop
+# STEP 5: Feedback loop
 # ═══════════════════════════════════════════════════════════════
 
 hr
 echo ""
-echo -e "  ${BOLD}Feedback Loop Setup${NC}"
+echo -e "  ${BOLD}Feedback Loop${NC}"
 echo ""
-echo -e "  The feedback loop has two pieces:"
+echo -e "  Makes your docs self-improving:"
 echo ""
-echo -e "    ${G}SessionEnd hook${NC}  — Runs after every Claude Code session."
-echo -e "                      Detects signals (corrections, frustrations,"
-echo -e "                      re-explanations) and flags sessions for review."
+echo -e "    ${G}SessionEnd hook${NC}  Runs after every session. Detects"
+echo -e "                      corrections, frustrations, context overflows."
 echo ""
-echo -e "    ${G}/reflect${NC}         — Command you run when you want to improve"
-echo -e "                      your docs. Reads flagged sessions, understands"
-echo -e "                      what went wrong, edits the docs."
-echo -e "                      Three levels: quick fix, deep analysis,"
-echo -e "                      or architectural rethink."
+echo -e "    ${G}/reflect${NC}         You run it when you want docs to improve."
+echo -e "                      Three levels. Always reversible."
 echo ""
 
 if confirm "Install the feedback loop?"; then
   echo ""
 
-  # Hook
   echo -e "  ${G}[1/3]${NC} Installing SessionEnd hook..."
   mkdir -p "$CLAUDE_DIR/hooks"
   cp "$SCRIPT_DIR/feedback-loop/session-end-log.sh" "$CLAUDE_DIR/hooks/session-end-log.sh"
   chmod +x "$CLAUDE_DIR/hooks/session-end-log.sh"
-  echo "    → $CLAUDE_DIR/hooks/session-end-log.sh"
+  echo "    -> $CLAUDE_DIR/hooks/session-end-log.sh"
 
   SETTINGS="$CLAUDE_DIR/settings.json"
   if [ -f "$SETTINGS" ] && grep -q "SessionEnd" "$SETTINGS" 2>/dev/null; then
-    echo "    → Hook already in settings.json"
+    echo "    -> Hook already in settings.json"
   else
-    echo ""
-    echo -e "  ${Y}ACTION NEEDED:${NC} Add this to $SETTINGS inside the top-level object:"
-    echo ""
-    echo '    "hooks": { "SessionEnd": [{ "hooks": [{'
-    echo '      "type": "command",'
-    echo "      \"command\": \"$CLAUDE_DIR/hooks/session-end-log.sh\","
-    echo '      "timeout": 15 }]}]}'
-    echo ""
-    pause
+    echo "    Configuring hook in settings.json..."
+    # Auto-install the hook config
+    HOOK_CMD="$CLAUDE_DIR/hooks/session-end-log.sh"
+    if [ -f "$SETTINGS" ]; then
+      # Merge into existing settings
+      cp "$SETTINGS" "$SETTINGS.bak"
+      python3 -c "
+import json, sys
+with open('$SETTINGS') as f:
+    settings = json.load(f)
+settings.setdefault('hooks', {})
+settings['hooks']['SessionEnd'] = [{'hooks': [{'type': 'command', 'command': '$HOOK_CMD', 'timeout': 15}]}]
+with open('$SETTINGS', 'w') as f:
+    json.dump(settings, f, indent=2)
+print('    -> Updated settings.json (backup at settings.json.bak)')
+" 2>/dev/null || {
+        echo -e "  ${Y}NOTE:${NC} Could not auto-configure. Add this to $SETTINGS:"
+        echo ""
+        echo "    \"hooks\": { \"SessionEnd\": [{ \"hooks\": [{ \"type\": \"command\", \"command\": \"$HOOK_CMD\", \"timeout\": 15 }]}]}"
+        echo ""
+      }
+    else
+      # Create new settings file
+      python3 -c "
+import json
+settings = {'hooks': {'SessionEnd': [{'hooks': [{'type': 'command', 'command': '$HOOK_CMD', 'timeout': 15}]}]}}
+with open('$SETTINGS', 'w') as f:
+    json.dump(settings, f, indent=2)
+print('    -> Created settings.json')
+" 2>/dev/null
+    fi
   fi
 
-  # /reflect + /status
-  echo -e "  ${G}[2/3]${NC} Installing /reflect and /status commands..."
+  echo -e "  ${G}[2/3]${NC} Installing /reflect..."
   mkdir -p "$CLAUDE_DIR/skills/reflect"
-  cp "$SCRIPT_DIR/feedback-loop/reflect-skill/SKILL.md" "$CLAUDE_DIR/skills/reflect/SKILL.md"
-  echo "    → /reflect (3 levels + undo + dry-run)"
-  if [ -f "$CLAUDE_DIR/skills/status/SKILL.md" ]; then
-    echo "    → /status already installed"
-  fi
+  sed "s|MYCELIUM_DIR|$SCRIPT_DIR|g" "$SCRIPT_DIR/feedback-loop/reflect-skill/SKILL.md" > "$CLAUDE_DIR/skills/reflect/SKILL.md"
+  echo "    -> /reflect (3 levels + undo + dry-run)"
 
-  # Backfill history
   echo -e "  ${G}[3/3]${NC} Session history..."
   HISTORY="$CLAUDE_DIR/session-history.jsonl"
   if [ -f "$HISTORY" ] && [ -s "$HISTORY" ]; then
     TOTAL=$(wc -l < "$HISTORY")
     FLAGGED=$(grep -c '"needs_review":true' "$HISTORY" 2>/dev/null || echo 0)
-    echo "    → $TOTAL sessions logged, $FLAGGED flagged"
-  elif [ -f "$SCRIPT_DIR/feedback-loop/backfill-history.py" ]; then
-    echo "    Backfilling from existing sessions..."
-    python3 "$SCRIPT_DIR/feedback-loop/backfill-history.py"
+    echo "    -> $TOTAL sessions logged, $FLAGGED flagged"
   else
-    echo "    → No history yet. Starts logging from your next session."
+    echo "    -> Starts logging from your next session."
   fi
 
   echo -e "\n  ${G}Feedback loop installed.${NC}"
 else
-  echo "  Skipped."
+  echo "  Skipped. Run ./setup.sh --feedback-only later."
 fi
 
 # ═══════════════════════════════════════════════════════════════
-# STEP 8: Summary
+# SUMMARY
 # ═══════════════════════════════════════════════════════════════
 
 echo ""
@@ -407,32 +607,29 @@ hr
 echo ""
 echo -e "  ${BOLD}Setup Complete${NC}"
 echo ""
-echo -e "  ${G}What's ready:${NC}"
-echo "    • Pyramid directory structure"
-echo "    • Backup / restore point"
-echo "    • SessionEnd hook (auto-logs every session)"
-echo "    • /reflect command (3 levels of doc improvement)"
-echo "    • /status command (quick health check)"
+echo -e "  ${BOLD}${G}NEXT STEP:${NC} Open a Claude Code session and run:"
 echo ""
-echo -e "  ${G}Your daily workflow:${NC}"
-echo "    1. Use Claude Code normally"
+echo -e "    ${G}/reflect 2${NC}"
+echo ""
+echo "  This mines your conversation history and builds real playbooks"
+echo "  from your actual usage patterns, corrections, and workflows."
+echo "  The more sessions you have, the better the playbooks."
+echo ""
+hr
+echo ""
+echo -e "  ${G}Ongoing workflow:${NC}"
+echo "    1. Use your AI coding tool normally"
 echo "    2. After important sessions: /reflect"
-echo "    3. Weekly deep dive: /reflect 2"
-echo "    4. Check health anytime: /status"
+echo "    3. Weekly deep analysis: /reflect 2"
+echo "    4. Validate structure: python3 validate.py ~/project"
 echo ""
-echo -e "  ${G}Useful commands:${NC}"
-echo "    /reflect          Quick doc fixes from recent sessions"
-echo "    /reflect 2        Deep analysis + restructure"
-echo "    /reflect 3        Rethink the framework (contributors)"
-echo "    /reflect undo     Restore from last snapshot"
-echo "    /status           Health check"
-echo "    ./rollback.sh     Restore original CLAUDE.md files"
+echo -e "  ${G}Safety:${NC}"
+echo "    /reflect undo     Undo last reflect"
+echo "    /reflect dry-run  Preview changes before applying"
 echo ""
-echo -e "  ${G}Viewer:${NC}"
-echo "    python3 build-viewer.py    # Rebuild the HTML doc browser"
-echo "    open viewer.html           # Browse your pyramid"
+echo -e "  ${G}Tools:${NC}"
+echo "    python3 validate.py ~/project    Check for problems"
+echo "    python3 build-viewer.py          Rebuild HTML viewer"
 echo ""
-echo -e "  ${DIM}Documentation: README.md${NC}"
-echo -e "  ${DIM}Examples: examples/activecomply-api/ and examples/thezeitgeistexperiment/${NC}"
 echo -e "  ${DIM}License: Anti-Capitalist Software License v1.4${NC}"
 echo ""

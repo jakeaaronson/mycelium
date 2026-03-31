@@ -30,8 +30,15 @@ The pyramid architecture solves this by matching documentation loading to task s
 | Pyramid Level 0 only | 50 lines | ~80% relevant |
 | Pyramid L0 + 1 playbook | 80-90 lines | ~90% relevant |
 | Pyramid L0 + L1 + L2 | 100-150 lines | ~95% relevant |
+| Skill (live check) | 0 pre-loaded lines | 100% relevant (fetched on demand) |
 
 The model gets *more relevant* context while loading *less total* context.
+
+## Why Skills Beat Reference Sheets
+
+Static reference sheets (port tables, config values, service lists) have a staleness problem. The moment someone changes a port or restarts a service, the doc is wrong. Worse, the model *trusts* the doc and wastes turns acting on bad info.
+
+Skills solve this by being executable. A `/media-server` skill that SSHes in and runs `docker ps` returns the *current* state — always fresh, zero maintenance. Reference material should be reserved for **gotcha notes**: non-obvious things you can't derive from the live system (e.g., "qBittorrent bans your IP after 5 failed logins — restart the container").
 
 ## Why Routing Tables Work
 

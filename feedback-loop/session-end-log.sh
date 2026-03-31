@@ -1,28 +1,22 @@
 #!/bin/bash
-# SessionEnd hook — logs session, detects signals, flags for /reflect.
+# SessionEnd hook — logs session metadata for /reflect.
 # Runs automatically at the end of every Claude Code session.
+# Detects friction signals so /reflect can prioritize high-friction sessions.
 
-set -euo pipefail
+set -eo pipefail
 
 INPUT=$(cat)
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
 CWD=$(echo "$INPUT" | jq -r '.cwd // "unknown"')
-REASON=$(echo "$INPUT" | jq -r '.reason // "unknown"')
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 LOG_FILE="$HOME/.claude/session-history.jsonl"
 
 # Determine project from cwd
-PROJECT="unknown"
-case "$CWD" in
-  */activecomply-api*) PROJECT="activecomply-api" ;;
-  */dashboard-app*) PROJECT="dashboard-app" ;;
-  */survey-app*) PROJECT="survey-app" ;;
-  */thezeitgeistexperiment*) PROJECT="zeitgeist" ;;
-  */inkmans*) PROJECT="inkmans-brain" ;;
-  */dev-agents*) PROJECT="dev-agents" ;;
-  */agentdepo*) PROJECT="agentdepo" ;;
-  "$HOME") PROJECT="home" ;;
-esac
+if [ "$CWD" = "$HOME" ]; then
+  PROJECT="home"
+else
+  PROJECT=$(basename "$CWD")
+fi
 
 # Find session JSONL file
 SESSION_FILE=""
@@ -33,83 +27,172 @@ for dir in "$HOME/.claude/projects/"*/; do
   fi
 done
 
-# ── Extract metrics and detect signals in one pass ──
-MSG_COUNT=0
-COMPACTIONS=0
-TOOL_CALLS=0
-CORRECTIONS=0
-REEXPLANATIONS=0
-FRUSTRATIONS=0
-OVERFLOWS=0
-REPEATED_READS=0
-CORRECTIONS=0
-REEXPLANATIONS=0
-FRUSTRATIONS=0
-OVERFLOWS=0
-
-if [ -n "$SESSION_FILE" ] && [ -f "$SESSION_FILE" ]; then
-  # Count messages and tool calls
-  MSG_COUNT=$(grep -c '"type":"user"' "$SESSION_FILE" 2>/dev/null || echo 0)
-  TOOL_CALLS=$(grep -c '"tool_use"' "$SESSION_FILE" 2>/dev/null || echo 0)
-
-  # Extract user text for signal detection
-  USER_TEXT=$(python3 -c "
-import json, sys
-texts = []
-for line in open('$SESSION_FILE'):
-    try:
-        obj = json.loads(line)
-        if obj.get('type') != 'user': continue
-        c = obj.get('message',{}).get('content','')
-        if isinstance(c, str) and len(c) > 10 and not c.startswith('<'):
-            texts.append(c.lower())
-        elif isinstance(c, list):
-            for b in c:
-                if isinstance(b, dict) and b.get('type') == 'text' and len(b.get('text','')) > 10:
-                    t = b['text']
-                    if not t.startswith('<'):
-                        texts.append(t.lower())
-    except: pass
-print('\n'.join(texts))
-" 2>/dev/null || echo "")
-
-  # Signal detection — user messages
-  CORRECTIONS=$(echo "$USER_TEXT" | grep -ciE "no[, ]+(not that|i mean)|actually[, ]|that.s (not|wrong)|you (missed|forgot|should have)|wrong (file|branch|dir)|the other (one|repo)" 2>/dev/null || echo 0)
-  REEXPLANATIONS=$(echo "$USER_TEXT" | grep -ciE "remember[, ]+(that|we|the|i)|i.ve (already|told you|explained)|as i said|like (i|we) (said|discussed)|we always|we never|the convention is|the rule is" 2>/dev/null || echo 0)
-  FRUSTRATIONS=$(echo "$USER_TEXT" | grep -ciE "why (is|are|did) (it|you|this)|still (not|broken|wrong)|try again|you.re (stuck|looping)" 2>/dev/null || echo 0)
-  OVERFLOWS=$(echo "$USER_TEXT" | grep -ciE "continued from a previous conversation|context.*(limit|overflow|ran out)" 2>/dev/null || echo 0)
-  COMPACTIONS=$(grep -ciE "compacted|PreCompact|PostCompact" "$SESSION_FILE" 2>/dev/null || echo 0)
-
-  # Signal detection — repeated file reads (model reading same file 4+ times = needs a reference sheet)
-  REPEATED_READS=$(python3 -c "
-import json, sys
+# Get counts + detect friction signals
+ANALYSIS=$(python3 -c "
+import json, sys, re
 from collections import Counter
-reads = Counter()
-for line in open('$SESSION_FILE'):
-    try:
-        obj = json.loads(line)
-        if obj.get('type') != 'assistant': continue
-        content = obj.get('message', {}).get('content', [])
-        if not isinstance(content, list): continue
-        for c in content:
-            if isinstance(c, dict) and c.get('type') == 'tool_use' and c.get('name') == 'Read':
-                fp = c.get('input', {}).get('file_path', '')
-                if fp: reads[fp] += 1
-    except: pass
-repeated = [f for f, n in reads.items() if n >= 4]
-print(len(repeated))
-" 2>/dev/null || echo 0)
+
+session_file = '$SESSION_FILE'
+msgs = 0
+tools = 0
+compactions = 0
+
+# Signal counters
+corrections = 0
+frustrations = 0
+reexplanations = 0
+repeated_reads = 0
+retry_loops = 0
+
+# Tracking for pattern detection
+read_files = Counter()
+tool_targets = []  # (tool_name, target) for retry detection
+prev_user_texts = []
+
+# Patterns
+CORRECTION_RE = re.compile(
+    r'\b(no[, ]+not|that.s not|wrong|don.t do|stop doing|actually[, ]+I|'
+    r'I said|I meant|that.s incorrect|please don.t|I already told you|'
+    r'not what I asked|you misunderstood)\b', re.I
+)
+FRUSTRATION_RE = re.compile(
+    r'\b(still broken|still not working|still failing|keep trying|keep iterating|'
+    r'try again|doesn.t work|isn.t working|same error|same issue|'
+    r'this is wrong|come on|why (is|does|did) it)\b', re.I
+)
+
+if not session_file:
+    print(json.dumps({
+        'user_messages': 0, 'tool_calls': 0, 'compactions': 0,
+        'signals': {
+            'corrections': 0, 'frustrations': 0, 'reexplanations': 0,
+            'repeated_reads': 0, 'retry_loops': 0
+        }
+    }))
+    sys.exit(0)
+
+try:
+    for raw in open(session_file):
+        try:
+            obj = json.loads(raw)
+        except:
+            continue
+
+        t = obj.get('type')
+
+        if t == 'user':
+            content = obj.get('message', {}).get('content', '')
+            if isinstance(content, list):
+                full_text = ' '.join(
+                    b.get('text', '') for b in content
+                    if isinstance(b, dict) and b.get('type') == 'text'
+                )
+            else:
+                full_text = str(content)
+
+            # Skip skill invocations
+            if '<command-name>' in full_text:
+                continue
+
+            msgs += 1
+
+            # Detect corrections
+            if CORRECTION_RE.search(full_text):
+                corrections += 1
+
+            # Detect frustrations
+            if FRUSTRATION_RE.search(full_text):
+                frustrations += 1
+
+            # Detect reexplanations (user repeating similar text within 5 messages)
+            text_lower = full_text.lower().strip()[:200]
+            if len(text_lower) > 30:
+                for prev in prev_user_texts[-5:]:
+                    # Simple overlap check: if >60% of words match
+                    words_now = set(text_lower.split())
+                    words_prev = set(prev.split())
+                    if len(words_now) > 3 and len(words_prev) > 3:
+                        overlap = len(words_now & words_prev) / min(len(words_now), len(words_prev))
+                        if overlap > 0.6:
+                            reexplanations += 1
+                            break
+                prev_user_texts.append(text_lower)
+
+        elif t == 'assistant':
+            content = obj.get('message', {}).get('content', [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get('type') == 'tool_use':
+                        tools += 1
+                        name = block.get('name', '')
+                        inp = block.get('input', {})
+
+                        # Track file reads for repeated_reads
+                        if name == 'Read':
+                            fp = inp.get('file_path', '')
+                            if fp:
+                                read_files[fp] += 1
+
+                        # Track tool targets for retry_loops
+                        target = ''
+                        if name in ('Read', 'Edit', 'Write'):
+                            target = inp.get('file_path', '')
+                        elif name == 'Bash':
+                            target = inp.get('command', '')[:80]
+                        if target:
+                            tool_targets.append((name, target))
+
+        elif t == 'summary':
+            compactions += 1
+
+except Exception:
+    pass
+
+# Count repeated reads (files read 3+ times)
+repeated_reads = sum(1 for f, c in read_files.items() if c >= 3)
+
+# Count retry loops (same tool+target appearing 3+ times in a window of 10)
+retry_count = 0
+for i in range(len(tool_targets)):
+    window = tool_targets[max(0, i-9):i+1]
+    current = tool_targets[i]
+    if sum(1 for t in window if t == current) >= 3:
+        retry_count += 1
+retry_loops = min(retry_count, 20)  # cap to avoid inflation
+
+print(json.dumps({
+    'user_messages': msgs,
+    'tool_calls': tools,
+    'compactions': compactions,
+    'signals': {
+        'corrections': corrections,
+        'frustrations': frustrations,
+        'reexplanations': reexplanations,
+        'repeated_reads': repeated_reads,
+        'retry_loops': retry_loops
+    }
+}))
+" 2>/dev/null || echo '{"user_messages":0,"tool_calls":0,"compactions":0,"signals":{"corrections":0,"frustrations":0,"reexplanations":0,"repeated_reads":0,"retry_loops":0}}')
+
+MSG_COUNT=$(echo "$ANALYSIS" | jq -r '.user_messages // 0')
+TOOL_CALLS=$(echo "$ANALYSIS" | jq -r '.tool_calls // 0')
+COMPACTIONS=$(echo "$ANALYSIS" | jq -r '.compactions // 0')
+SIGNALS=$(echo "$ANALYSIS" | jq -c '.signals // {}')
+TOTAL_SIGNALS=$(echo "$SIGNALS" | jq '[.[]] | add // 0')
+
+# Skip zero-message sessions
+if [ "$MSG_COUNT" -eq 0 ] 2>/dev/null; then
+  exit 0
 fi
 
-# Calculate score
-SCORE=$(( CORRECTIONS * 15 + REEXPLANATIONS * 20 + FRUSTRATIONS * 10 + OVERFLOWS * 25 + REPEATED_READS * 10 + (COMPACTIONS > 0 ? 15 : 0) ))
-if [ "$SCORE" -gt 100 ]; then SCORE=100; fi
-
-TOTAL_SIGNALS=$(( CORRECTIONS + REEXPLANATIONS + FRUSTRATIONS + OVERFLOWS + REPEATED_READS ))
-NEEDS_REVIEW=false
-if [ "$TOTAL_SIGNALS" -gt 0 ] || [ "$COMPACTIONS" -gt 0 ]; then
-  NEEDS_REVIEW=true
+# Deduplicate: skip if session_id already exists in history
+if grep -q "\"session_id\":\"$SESSION_ID\"" "$LOG_FILE" 2>/dev/null; then
+  exit 0
 fi
+
+# Compute score (higher = more friction = higher review priority)
+SCORE=$(echo "$SIGNALS" | jq '(.corrections * 10) + (.frustrations * 15) + (.reexplanations * 5) + (.repeated_reads * 3) + (.retry_loops * 2)')
+NEEDS_REVIEW=$([ "$SCORE" -ge 10 ] 2>/dev/null && echo "true" || echo "false")
 
 # Write to history
 jq -n -c \
@@ -117,15 +200,10 @@ jq -n -c \
   --arg sid "$SESSION_ID" \
   --arg cwd "$CWD" \
   --arg project "$PROJECT" \
-  --arg reason "$REASON" \
   --argjson msgs "$MSG_COUNT" \
   --argjson tools "$TOOL_CALLS" \
   --argjson compactions "$COMPACTIONS" \
-  --argjson corrections "$CORRECTIONS" \
-  --argjson reexplanations "$REEXPLANATIONS" \
-  --argjson frustrations "$FRUSTRATIONS" \
-  --argjson overflows "$OVERFLOWS" \
-  --argjson repeated_reads "$REPEATED_READS" \
+  --argjson signals "$SIGNALS" \
   --argjson score "$SCORE" \
   --argjson total_signals "$TOTAL_SIGNALS" \
   --argjson needs_review "$NEEDS_REVIEW" \
@@ -135,17 +213,10 @@ jq -n -c \
     session_id: $sid,
     cwd: $cwd,
     project: $project,
-    reason: $reason,
     user_messages: $msgs,
     tool_calls: $tools,
     compactions: $compactions,
-    signals: {
-      corrections: $corrections,
-      reexplanations: $reexplanations,
-      frustrations: $frustrations,
-      overflows: $overflows,
-      repeated_reads: $repeated_reads
-    },
+    signals: $signals,
     score: $score,
     total_signals: $total_signals,
     needs_review: $needs_review,

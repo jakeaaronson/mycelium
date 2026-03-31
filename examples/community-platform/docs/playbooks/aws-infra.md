@@ -11,7 +11,7 @@ aws cloudformation validate-template --template-body file://infrastructure/templ
 # Deploy
 aws cloudformation deploy \
   --template-file infrastructure/template.yaml \
-  --stack-name zeitgeist-dev \
+  --stack-name community-dev \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 
@@ -20,7 +20,7 @@ Naming conventions: Logical IDs in PascalCase, descriptions on all resources, `!
 ## IAM
 
 - `claude-readonly` user — managed **manually in AWS console** (NOT in CloudFormation)
-- Policies: `ZeitgeistReadOnly` + `claude-seed-policy`
+- Policies: `CommunityPlatformReadOnly` + `claude-seed-policy`
 - Policy JSON source: `infrastructure/claude-seed-policy.json`
 - To update: edit the JSON, paste into AWS console manually
 
@@ -38,13 +38,13 @@ When a permission error occurs: report the exact action and resource denied. The
 
 ```bash
 # Lambda logs
-aws logs tail /aws/lambda/zeitgeist-{name}-dev --follow
+aws logs tail /aws/lambda/community-{name}-dev --follow
 
 # S3 contents
-aws s3 ls s3://zeitgeist-public-{accountId}/
+aws s3 ls s3://community-public-{accountId}/
 
 # DynamoDB scan
-aws dynamodb scan --table-name zeitgeist-threads-dev --max-items 5
+aws dynamodb scan --table-name community-threads-dev --max-items 5
 
 # SQS queue depth
 aws sqs get-queue-attributes --queue-url {url} --attribute-names ApproximateNumberOfMessages

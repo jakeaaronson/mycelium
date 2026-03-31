@@ -27,8 +27,9 @@ Read your CLAUDE.md line by line. For each section, ask:
 | Would violating this cause a build failure or security issue? | **Keep in Level 0** |
 | Is this needed in >50% of conversations? | **Keep in Level 0** |
 | Is this specific to one type of task (testing, deploying, etc.)? | **Move to a playbook** |
-| Is this lookup/reference material (schemas, URLs, examples)? | **Move to reference** |
-| Can the model figure this out from reading the code? | **Delete it** |
+| Is this a procedure that checks live state (server status, deploys)? | **Make it a skill** |
+| Is this a non-obvious gotcha the model keeps hitting? | **Move to a gotcha note** |
+| Is this lookup material the model can find via code/commands? | **Delete it** |
 
 ### 3. Create the Directory Structure
 
@@ -122,13 +123,29 @@ Reindexing is the process of copying documents from one index to another...
 
 The model already knows what reindexing is. Tell it what's **specific to your project**.
 
+## Skills vs Gotcha Notes vs Playbooks
+
+Not everything belongs in a document. Use this decision tree:
+
+| Content Type | Where It Goes | Why |
+|-------------|---------------|-----|
+| Procedural check (server status, deploy state) | **Skill** | Returns live data, never stale |
+| Step-by-step workflow (how to deploy, how to test) | **Playbook** | Specific to your project, changes slowly |
+| Non-obvious gotcha the model keeps hitting | **Gotcha note** | Can't be derived from code, saves wasted turns |
+| Lookup material derivable from code/commands | **Delete it** | `grep` and `docker ps` are faster than stale docs |
+
+**The test for a gotcha note**: Would the model discover this on its own in under 2 tool calls? If yes, don't document it. If it would waste 5+ turns rediscovering it, write it down.
+
+**The test for a skill vs a playbook**: Does the content describe *checking current state* or *performing an action*? Skills check state (always fresh). Playbooks describe workflows (specific steps).
+
 ## Sizing Guidelines
 
 | Level | Target Size | Content Type |
 |-------|-------------|-------------|
 | Level 0 (CLAUDE.md) | 30-50 lines | Identity, hard rules, routing table |
 | Level 1 (playbooks) | 10-40 lines each | Task-specific workflows |
-| Level 2 (reference) | Any length | Lookup tables, schemas, scripts |
+| Level 2 (gotcha notes) | 5-15 lines each | Non-obvious pitfalls only |
+| Skills | Any length | Executable procedures that check live state |
 
 The total documentation can be as long as needed — the point is that only the relevant slice is loaded at any time.
 
@@ -138,3 +155,5 @@ The total documentation can be as long as needed — the point is that only the 
 2. **Playbooks are tutorials** — Don't explain concepts. Document your project's specific conventions and commands.
 3. **Level 0 creep** — Over time, people add "just one more thing" to CLAUDE.md. Audit quarterly.
 4. **Orphaned playbooks** — If the routing table doesn't point to it, the model won't find it. Keep the routing table current.
+5. **Verbose reference sheets** — 50-line reference docs that restate discoverable state go stale and waste context. Trim to gotcha notes or convert to skills.
+6. **Documenting what `grep` can find** — Config values, port numbers, file paths — if it's in the codebase, the model can find it. Only document what's *surprising*.

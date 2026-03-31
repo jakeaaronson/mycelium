@@ -1,19 +1,22 @@
 #!/bin/bash
 # ╔══════════════════════════════════════════════════════════════╗
-# ║  Mycelium Publish Script                                    ║
+# ║  Mycelium Publish                                           ║
 # ║                                                             ║
-# ║  Squashes local commits into one clean commit, pushes to    ║
-# ║  GitHub and Forgejo, and generates a changelog entry.       ║
+# ║  Publishes to GitHub and Forgejo while keeping private      ║
+# ║  files local. Uses .publishignore to strip personal data.   ║
 # ╚══════════════════════════════════════════════════════════════╝
 #
 # Usage:
-#   ./publish.sh                  # Interactive: asks for commit message
-#   ./publish.sh "v0.1: initial"  # Non-interactive
-#   ./publish.sh --dry-run        # Show what would happen
+#   ./publish.sh                     # Interactive
+#   ./publish.sh "v0.1: initial"     # Non-interactive
+#   ./publish.sh --dry-run           # Show what would happen
+#
+# Local git tracks EVERYTHING (research, backups, sessions).
+# Public repos only get the clean, publishable subset.
 #
 # Prerequisites:
-#   git remote add github  git@github.com:USERNAME/mycelium.git
-#   git remote add forgejo git@forgejo.example.com:USERNAME/mycelium.git
+#   git remote add github  git@github.com:USER/mycelium.git
+#   git remote add forgejo git@forgejo.example.com:USER/mycelium.git
 
 set -euo pipefail
 
@@ -37,146 +40,196 @@ for arg in "$@"; do
   esac
 done
 
-# ── Preflight checks ──
+# ── Preflight ──
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
-  echo -e "${R}Not a git repository.${NC} Run: git init && git add -A && git commit -m 'initial'"
+  echo -e "${R}Not a git repo.${NC} Run: git init && git add -A && git commit -m 'initial'"
   exit 1
 fi
 
 BRANCH=$(git branch --show-current)
-if [ "$BRANCH" != "main" ] && [ "$BRANCH" != "master" ]; then
-  echo -e "${Y}Warning: on branch '$BRANCH', not main.${NC}"
+
+# ── Commit any uncommitted local changes first ──
+if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  UNCOMMITTED=$(git status --short | wc -l)
+  echo -e "  ${Y}$UNCOMMITTED uncommitted changes.${NC}"
+  if ! $DRY_RUN; then
+    read -p "  Commit them now? [Y/n]: " yn
+    case "$yn" in [Nn]*) echo "  Aborting."; exit 0 ;; esac
+    git add -A
+    git commit -m "wip: pre-publish checkpoint"
+  fi
 fi
 
-# ── Show what's pending ──
-LAST_PUBLISH=$(git log --oneline --grep="publish:" --max-count=1 --format="%h %s" 2>/dev/null || echo "none")
-COMMITS_SINCE=$(git log --oneline $(git log --grep="publish:" --max-count=1 --format="%h" 2>/dev/null || echo "HEAD~100")..HEAD 2>/dev/null | wc -l)
-FILES_CHANGED=$(git diff --stat $(git log --grep="publish:" --max-count=1 --format="%h" 2>/dev/null || echo "HEAD~100")..HEAD 2>/dev/null | tail -1 || echo "unknown")
+# ── Count what's being published ──
+TOTAL_COMMITS=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  COMMITS_SINCE=$(git rev-list --count "$LAST_TAG"..HEAD)
+else
+  COMMITS_SINCE=$TOTAL_COMMITS
+fi
+
+# ── Read .publishignore ──
+EXCLUDE_PATTERNS=()
+if [ -f .publishignore ]; then
+  while IFS= read -r line; do
+    # Skip comments and blank lines
+    [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+    EXCLUDE_PATTERNS+=("$line")
+  done < .publishignore
+fi
+
+# Count files that would be excluded
+EXCLUDED_COUNT=0
+for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+  matches=$(git ls-files "$pattern" 2>/dev/null | wc -l)
+  EXCLUDED_COUNT=$((EXCLUDED_COUNT + matches))
+done
+
+TRACKED=$(git ls-files | wc -l)
+PUBLIC_COUNT=$((TRACKED - EXCLUDED_COUNT))
 
 echo ""
 echo -e "  ${B}Mycelium Publish${NC}"
 echo ""
-echo -e "  Last publish: ${DIM}$LAST_PUBLISH${NC}"
-echo -e "  Commits since: ${B}$COMMITS_SINCE${NC}"
-echo -e "  Changes: ${DIM}$FILES_CHANGED${NC}"
+echo -e "  Branch: $BRANCH"
+echo -e "  Total commits: $TOTAL_COMMITS"
+echo -e "  Commits since last tag: ${B}$COMMITS_SINCE${NC}"
+echo ""
+echo -e "  ${B}Files:${NC}"
+echo -e "    Local (tracked):     $TRACKED"
+echo -e "    Public (published):  ${G}$PUBLIC_COUNT${NC}"
+echo -e "    Private (stripped):  ${Y}$EXCLUDED_COUNT${NC}"
 echo ""
 
-# ── Check for uncommitted changes ──
-if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-  UNCOMMITTED=$(git status --short | wc -l)
-  echo -e "  ${Y}$UNCOMMITTED uncommitted changes.${NC}"
-  if $DRY_RUN; then
-    echo "  (dry-run: would commit these first)"
-  else
-    read -p "  Commit them now? [Y/n]: " yn
-    case "$yn" in [Nn]*) echo "  Aborting."; exit 0 ;; esac
-    git add -A
-    git commit -m "wip: uncommitted changes before publish"
-    echo ""
-  fi
+if [ ${#EXCLUDE_PATTERNS[@]} -gt 0 ]; then
+  echo -e "  ${DIM}Stripped by .publishignore:${NC}"
+  for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+    count=$(git ls-files "$pattern" 2>/dev/null | wc -l)
+    if [ "$count" -gt 0 ]; then
+      echo -e "    ${DIM}$pattern ($count files)${NC}"
+    fi
+  done
+  echo ""
 fi
 
-# ── Get commit message ──
+# ── Get message ──
 if [ -z "$MESSAGE" ]; then
   echo "  Recent commits:"
   git log --oneline -10 | sed 's/^/    /'
   echo ""
   read -p "  Publish message (e.g. 'v0.1: initial release'): " MESSAGE
   if [ -z "$MESSAGE" ]; then
-    echo "  No message, aborting."
+    echo "  No message. Aborting."
     exit 0
   fi
 fi
 
-# ── Generate changelog entry ──
+# ── Build changelog entry from local commits ──
 CHANGELOG_ENTRY="## $(date +%Y-%m-%d) . $MESSAGE
 
-$(git log --oneline $(git log --grep="publish:" --max-count=1 --format="%h" 2>/dev/null || echo "--root")..HEAD 2>/dev/null | sed 's/^[a-f0-9]* /- /')
-
-Files changed:
-$FILES_CHANGED
+Changes:
+$(git log --oneline ${LAST_TAG:+$LAST_TAG..}HEAD 2>/dev/null | sed 's/^[a-f0-9]* /- /' | head -30)
 "
 
+# ── Dry run ──
 if $DRY_RUN; then
   echo -e "  ${B}DRY RUN${NC}"
   echo ""
-  echo "  Would squash $COMMITS_SINCE commits into:"
-  echo -e "    ${G}publish: $MESSAGE${NC}"
+  echo "  Would publish $PUBLIC_COUNT files (stripping $EXCLUDED_COUNT private files)"
+  echo -e "  Tag: ${G}$MESSAGE${NC}"
   echo ""
   echo "  Would push to:"
   for remote in $(git remote); do
-    url=$(git remote get-url "$remote" 2>/dev/null || echo "unknown")
+    url=$(git remote get-url "$remote" 2>/dev/null || echo "not configured")
     echo "    $remote -> $url"
   done
+  if [ "$(git remote | wc -l)" -eq 0 ]; then
+    echo "    (no remotes configured)"
+  fi
   echo ""
   echo "  Changelog entry:"
   echo "$CHANGELOG_ENTRY" | sed 's/^/    /'
+  echo ""
+  echo "  Files that would be published:"
+  git ls-files | while read f; do
+    skip=false
+    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+      if [[ "$f" == $pattern* ]] || [[ "$f" == $pattern ]]; then
+        skip=true
+        break
+      fi
+    done
+    if ! $skip; then echo "    $f"; fi
+  done
   echo ""
   echo "  Run without --dry-run to execute."
   exit 0
 fi
 
-# ── Squash commits ──
-echo -e "  ${G}Squashing $COMMITS_SINCE commits...${NC}"
+# ── Create temporary publish branch ──
+PUBLISH_BRANCH="publish-staging-$$"
+echo -e "  ${G}Creating clean publish branch...${NC}"
 
-# Find the last publish commit, or the root
-LAST_HASH=$(git log --grep="publish:" --max-count=1 --format="%h" 2>/dev/null || echo "")
+git checkout -b "$PUBLISH_BRANCH" --quiet
 
-if [ -n "$LAST_HASH" ]; then
-  # Soft reset to the last publish point, then recommit everything
-  git reset --soft "$LAST_HASH"
-else
-  # No previous publish. Squash everything into one commit.
-  # Reset to root but keep all changes staged
-  FIRST=$(git rev-list --max-parents=0 HEAD)
-  git reset --soft "$FIRST"
-fi
+# Remove private files from the publish branch
+for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+  git rm -r --cached --quiet "$pattern" 2>/dev/null || true
+done
 
-git add -A
-git commit -m "$(cat <<EOF
-publish: $MESSAGE
+# Commit the removal
+git commit --quiet -m "strip private files for publish" --allow-empty
 
-Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
-EOF
-)"
+# Squash everything into one commit
+git reset --soft $(git rev-list --max-parents=0 HEAD)
+git commit --quiet -m "publish: $MESSAGE"
 
-echo -e "  ${G}Squashed into one clean commit.${NC}"
+echo -e "  ${G}Squashed into clean publish commit.${NC}"
+
+# ── Push to each remote ──
+PUSH_SUCCESS=0
+for remote in $(git remote); do
+  url=$(git remote get-url "$remote" 2>/dev/null || echo "unknown")
+  echo -e "  Pushing to ${B}$remote${NC} ($url)..."
+  if git push "$remote" "$PUBLISH_BRANCH:main" --force 2>/dev/null; then
+    echo -e "    ${G}OK${NC}"
+    PUSH_SUCCESS=$((PUSH_SUCCESS + 1))
+  else
+    echo -e "    ${Y}Failed (remote may not exist yet)${NC}"
+    echo -e "    Run: git remote add $remote <url>"
+  fi
+done
+
+# ── Return to original branch ──
+# Force checkout because stripped files are now untracked and would block the switch
+git checkout "$BRANCH" --force --quiet
+git branch -D "$PUBLISH_BRANCH" --quiet
+
+# ── Tag the local commit ──
+TAG_NAME=$(echo "$MESSAGE" | sed 's/[^a-zA-Z0-9._-]/-/g' | sed 's/--*/-/g' | tr '[:upper:]' '[:lower:]')
+git tag -a "$TAG_NAME" -m "publish: $MESSAGE" 2>/dev/null || true
 
 # ── Write changelog ──
 if [ -f CHANGELOG.md ]; then
-  # Prepend new entry after the header
-  HEADER=$(head -2 CHANGELOG.md)
-  BODY=$(tail -n +3 CHANGELOG.md)
-  echo "$HEADER" > CHANGELOG.md
+  EXISTING=$(cat CHANGELOG.md)
+  echo "# Changelog" > CHANGELOG.md
   echo "" >> CHANGELOG.md
   echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
-  echo "$BODY" >> CHANGELOG.md
+  echo "$EXISTING" | tail -n +2 >> CHANGELOG.md
 else
   echo "# Changelog" > CHANGELOG.md
   echo "" >> CHANGELOG.md
   echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
 fi
-
 git add CHANGELOG.md
-git commit --amend --no-edit
-
-echo -e "  ${G}Changelog updated.${NC}"
-
-# ── Push to remotes ──
-for remote in $(git remote); do
-  url=$(git remote get-url "$remote" 2>/dev/null || echo "unknown")
-  echo -e "  Pushing to ${B}$remote${NC} ($url)..."
-  if git push "$remote" "$BRANCH" --force-with-lease 2>/dev/null; then
-    echo -e "    ${G}OK${NC}"
-  else
-    echo -e "    ${Y}Failed. You may need to set up the remote:${NC}"
-    echo "    git remote add $remote <url>"
-  fi
-done
+git commit --quiet -m "changelog: $MESSAGE"
 
 echo ""
 echo -e "  ${G}Published!${NC}"
 echo ""
-echo "  Changelog entry written to CHANGELOG.md"
-echo "  To generate a blog post from this, copy the changelog entry."
+echo "  Tag: $TAG_NAME"
+echo "  Pushed to: $PUSH_SUCCESS remote(s)"
+echo "  Changelog written to CHANGELOG.md"
+echo "  Local branch untouched (all private files still here)"
 echo ""

@@ -1,24 +1,20 @@
-# Reference: {Topic}
+# Gotchas: {Topic}
 
-> Level 2 reference sheet. Only loaded when a playbook points here.
-> This is lookup material — schemas, URLs, configurations, scripts.
+> Level 2 reference. Only loaded when a playbook or routing table points here.
+> Keep this lean — only things you CAN'T derive from reading code or running commands.
+> If information can be checked live (server status, config values), put it in a skill instead.
 
-## {Section}
+## Non-obvious things that waste time
 
-<!-- Tables, code blocks, schemas — whatever the model needs to look up. -->
+- **{gotcha}** — {why it's surprising and what to do instead}
+- **{gotcha}** — {context}
+- **{gotcha}** — {context}
 
-| Key | Value |
-|-----|-------|
-| {key} | {value} |
-
-## {Section}
-
-```bash
-{reusable command or script}
-```
-
-## {Section}
-
-```json
-{schema or configuration example}
-```
+<!--
+Quality checklist:
+- [ ] Every item is something you can't discover by reading the codebase
+- [ ] Every item has burned at least one session before
+- [ ] No items that are just restating what `docker ps` or `grep` would show
+- [ ] Under 15 lines of actual content
+- [ ] Consider: should this be a skill instead of a note?
+-->

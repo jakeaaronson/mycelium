@@ -29,11 +29,13 @@ Every AI coding tool loads an instruction file on every conversation. These file
         │  Playbooks   │  Loaded per task. "How to do X."
         └──────┬──────┘
    ┌───────────┴───────────┐
-   │   Reference Sheets    │  Loaded when a playbook points to it.
+   │  Gotcha Notes + Skills │  Lean references + executable helpers.
    └───────────────────────┘
 ```
 
 Instead of 400 lines every time, the model loads ~80 lines of exactly what it needs.
+
+**Skills over reference sheets.** Procedural knowledge (checking server status, setting up a worker) belongs in executable skills that return *current* state, not static documents that go stale. Reference material should be trimmed to **gotcha notes** — only the non-obvious things you can't derive from reading the code or running a command.
 
 **2. The Feedback Loop.** Every session teaches the system:
 
@@ -49,7 +51,7 @@ The model corrected you? That correction becomes a playbook rule. You re-explain
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/mycelium.git
+git clone https://github.com/jakeaaronson/mycelium.git
 cd mycelium
 ./setup.sh
 ```
@@ -64,11 +66,11 @@ Three levels of self-improvement:
 /reflect          Fix docs from recent sessions. Quick, safe.
 /reflect 2        Replay full history. Restructure playbooks.
 /reflect 3        Rethink the framework itself. For contributors.
-/reflect undo     Restore from last snapshot.
+/reflect undo     Revert the last reflect via git.
 /reflect dry-run  Preview changes before applying.
 ```
 
-Every reflect snapshots your docs first. You can always go back.
+Every reflect creates a git checkpoint first. You can always go back.
 
 ## Why "Mycelium"?
 
@@ -89,25 +91,32 @@ mycelium/
 ├── setup.sh                    Start here
 ├── validate.py                 Check your docs for problems
 ├── viewer.html                 Browse the pyramid visually
-├── rollback.sh                 Restore from any backup
 │
-├── examples/                   Two real-world implementations
+├── examples/                   Real-world implementations (media-server, community-platform)
 ├── templates/                  Blank starting templates
 ├── adapters/                   Generate for Codex, Gemini, Cursor, etc.
-├── feedback-loop/              SessionEnd hook + /reflect + /status
+├── feedback-loop/              SessionEnd hook + /reflect + health-check
 └── docs/                       Theory, adaptation guide, research
 ```
 
+### Prerequisites
+
+- `python3` (for validate.py, adapters, feedback loop)
+- `jq` (for the SessionEnd hook)
+- `git` (for reflect checkpoints and undo)
+
 ## The Numbers
 
-Built from mining 146 real coding sessions (212 MB of conversation data):
+Built from mining 220+ real coding sessions across 10 projects:
 
-| Metric | Before Mycelium | Target |
-|--------|----------------|--------|
+| Metric | Before Mycelium | After |
+|--------|----------------|-------|
 | Instruction file size | 300-500 lines (always loaded) | ~50 lines + playbooks on demand |
-| Context overflow rate | 41% of sessions | <10% |
-| Corrections per session | Frequent (same mistakes repeated) | Declining toward zero |
+| Clean sessions (zero friction) | ~30% | 39% and trending up |
+| High friction sessions (score 30+) | ~35% | 23% and trending down |
 | Documentation maintenance | Manual, sporadic | Automatic via /reflect |
+
+The feedback loop now **measures its own effectiveness**. Each session gets a friction score based on detected corrections, frustrations, repeated reads, and retry loops. Run `health-check.py` to see the trend — if the score isn't going down, the docs aren't helping.
 
 ## Who This Is For
 

@@ -1,6 +1,6 @@
 # Feedback Loop
 
-Makes your pyramid documentation self-improving. Two pieces.
+Makes your pyramid documentation self-improving. Two pieces: a hook that logs sessions, and `/reflect` that reads them and improves docs.
 
 ## Install
 
@@ -18,40 +18,30 @@ Every session ends
        │
        ↓
 SessionEnd hook fires automatically
-  • Logs session metadata
-  • Detects signals (corrections, re-explanations, frustrations, overflows)
-  • Scores session 0-100
-  • Flags sessions with signals as needs_review: true
+  • Logs metadata: timestamp, project, message/tool counts
+  • Detects friction signals: corrections, frustrations, repeated reads, retry loops
+  • Computes a friction score — high-score sessions get flagged for review
        │
        ↓
-~/.claude/session-history.jsonl accumulates flagged sessions
+~/.claude/session-history.jsonl accumulates session records
        │
        ↓
 You run /reflect (whenever you want)
-  • Claude reads ALL flagged sessions
-  • Understands what went wrong (not just keywords — full comprehension)
-  • Edits playbooks, references, CLAUDE.md
+  • AI reads the actual conversations (prioritizes high-friction sessions)
+  • Thinks: "What context at the start would have made this go better?"
+  • Edits playbooks, references, CLAUDE.local.md
   • Marks sessions as reviewed
        │
        ↓
-Docs are better → next session is better → fewer signals → repeat
+Docs are better → next session is better → repeat
+       │
+       ↓
+health-check.py measures whether it's actually working
 ```
 
-**That's it. Hook logs and flags. /reflect reads and fixes.**
+**Hook detects friction. /reflect fixes the cause. Health check proves it's working.**
 
-## The Hook — What It Detects
-
-The SessionEnd hook runs pattern matching on every session's user messages:
-
-| Signal | What It Catches | Score Weight |
-|--------|----------------|-------------|
-| Corrections | "no not that", "wrong file", "actually..." | +15 each |
-| Re-explanations | "remember we always...", "as I said..." | +20 each |
-| Frustrations | "why is it...", "still broken", "try again" | +10 each |
-| Context overflows | "continued from previous conversation" | +25 each |
-| Compactions | Context window hit limit | +15 |
-
-Sessions scoring >0 are flagged as `needs_review: true`.
+The hook detects five friction signals: **corrections** ("no, not that"), **frustrations** ("still broken"), **reexplanations** (user repeating themselves), **repeated reads** (same file read 3+ times), and **retry loops** (same tool+target retried). Sessions scoring 10+ get `needs_review: true` so `/reflect` knows where to focus.
 
 ## /reflect — Three Levels
 
@@ -63,37 +53,67 @@ Sessions scoring >0 are flagged as `needs_review: true`.
 
 ### Level 1 — Quick Reflect (daily use)
 
-Reads flagged sessions, applies obvious fixes to existing playbooks and references. Fast, safe, no structural changes. Run this after a rough session or at end of day.
-
-```
-/reflect                     # Fix docs from recent sessions
-/reflect 1 zeitgeist         # Only fix zeitgeist docs
-```
+Reads recent unreviewed sessions, identifies knowledge gaps, applies fixes to existing playbooks and references. Fast, safe, no structural changes.
 
 ### Level 2 — Deep Analysis (weekly/monthly)
 
-Replays full session history for a project. Looks for patterns across many sessions. Can restructure playbooks — merge, split, create new ones, rewrite the routing table. Run when signal scores aren't declining or when a project feels stale.
-
-```
-/reflect 2                   # Deep analysis of worst project
-/reflect 2 activecomply-api  # Deep analysis of specific project
-```
+Reads full session history for a project. Looks for patterns across many sessions. Can restructure playbooks — merge, split, create new ones, rewrite the routing table.
 
 ### Level 3 — Architectural Rethink (contributors only)
 
-Questions the framework itself. Is the 3-level pyramid right? Are the signal patterns detecting the right things? Is 50 lines the right L0 size? Can modify templates, build scripts, the hook, /reflect itself, anything. Changes should be committed as a PR.
+Questions the framework itself. Can modify the hook, /reflect, templates, anything.
 
+## Troubleshooting the Hook
+
+If `/reflect` shows 0 sessions after many conversations, the hook may be failing:
+
+```bash
+# Verify hook is installed
+cat ~/.claude/settings.json | jq '.hooks.SessionEnd'
+
+# Test with a fake session
+echo '{"session_id":"test","cwd":"/tmp","reason":"test"}' | \
+  timeout 15 ~/.claude/hooks/session-end-log.sh
+
+# Check recent entries
+tail -3 ~/.claude/session-history.jsonl | jq .
+
+# Clean up test entries
+python3 -c "
+import json
+lines = [l for l in open('$HOME/.claude/session-history.jsonl')
+         if 'test' != json.loads(l).get('session_id')]
+open('$HOME/.claude/session-history.jsonl', 'w').write(''.join(lines))
+"
 ```
-/reflect 3                   # Full framework audit
+
+## Tools
+
+### health-check.py — Measure effectiveness
+
+```bash
+python3 health-check.py              # Full report: trends, per-project, signal breakdown
+python3 health-check.py --brief      # One-line summary with 2-week trend
+python3 health-check.py --backfill   # Recompute scores for all sessions
+```
+
+### read-session.py — Explore session history
+
+```bash
+python3 read-session.py SESSION_ID         # Read a session conversation
+python3 read-session.py --recent 10        # List 10 most recent sessions
+python3 read-session.py --search RabbitMQ  # Search all sessions for a keyword
+python3 read-session.py --summary          # Overview by project with friction counts
+python3 read-session.py FILE --tail 20     # Last 20 messages of a session
 ```
 
 ## Files
 
 ```
 feedback-loop/
-├── session-end-log.sh      # SessionEnd hook (auto, every session)
-├── analyze-sessions.py     # Metrics and reporting
-├── backfill-history.py     # One-time: populate history from old sessions
+├── session-end-log.sh      # SessionEnd hook — logs metadata + detects friction signals
+├── read-session.py         # Read/search session conversations
+├── health-check.py         # Measure whether the system is actually helping
 ├── reflect-skill/
 │   └── SKILL.md            # /reflect command (3 levels + undo + dry-run)
 └── README.md               # This file

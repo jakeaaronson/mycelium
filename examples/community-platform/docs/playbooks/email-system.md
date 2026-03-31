@@ -7,8 +7,8 @@ User sends email → SES receives → SNS notification → SQS queue → respons
 ```
 
 Email address determines routing:
-- `{thread-id}@thezeitgeistexperiment.com` → thread response handler
-- `thezeitgeistbot@...` → new topic submission
+- `{thread-id}@community-platform.example.com` → thread response handler
+- `platformbot@...` → new topic submission
 
 ## Outbound Notifications
 
@@ -46,5 +46,5 @@ Edit in `lambdas/email-dispatcher/`. Update PROJECT_SPEC.md Email Flows section 
 ## Common Issues
 
 - Notification throttle in `response-path.ts` — may suppress expected emails
-- SES receiving rules only process `@thezeitgeistexperiment.com` domain
+- SES receiving rules only process `@community-platform.example.com` domain
 - SNS topic connects SES to SQS — check SNS subscriptions if emails aren't processing

@@ -230,10 +230,11 @@ def main():
                 path = os.path.join(examples, name)
                 if os.path.isdir(path):
                     dirs.append(path)
-        # Also check home dir for real projects
-        for name in ["activecomply-api", "thezeitgeistexperiment", "dashboard-app", "survey-app", "dev-agents"]:
-            path = os.path.join(os.path.expanduser("~"), name)
-            if os.path.isdir(path) and find_l0(path)[0]:
+        # Also check home dir for any projects with pyramid structure
+        home = os.path.expanduser("~")
+        for name in sorted(os.listdir(home)):
+            path = os.path.join(home, name)
+            if os.path.isdir(path) and not name.startswith(".") and name != "mycelium" and find_l0(path)[0]:
                 dirs.append(path)
 
     for d in dirs:

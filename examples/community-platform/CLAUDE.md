@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-**The Zeitgeist Experiment** — A living repository of collective opinion. Users email responses to topic bubbles, AI scores and ranks them. No accounts, no feeds, no likes. Email is the primary entry point.
+**Community Platform** — A living repository of collective opinion. Users email responses to topic bubbles, AI scores and ranks them. No accounts, no feeds, no likes. Email is the primary entry point.
 
-Domains: `thezeitgeistexperiment.com`, `zeitgeistexperiment.com` (redirects)
+Domains: `community-platform.example.com`, `community-platform.example.com` (redirects)
 
 ## Stack
 
@@ -28,7 +28,7 @@ npm install && npm run build && npm test
 git push origin main                    # Triggers GitHub Actions deploy
 ```
 
-Manual CloudFormation: `aws cloudformation deploy --template-file infrastructure/template.yaml --stack-name zeitgeist-dev --capabilities CAPABILITY_NAMED_IAM`
+Manual CloudFormation: `aws cloudformation deploy --template-file infrastructure/template.yaml --stack-name community-dev --capabilities CAPABILITY_NAMED_IAM`
 
 ## Before You Start
 
@@ -49,7 +49,7 @@ Manual CloudFormation: `aws cloudformation deploy --template-file infrastructure
 
 ## AWS Access
 
-IAM user `claude-readonly` with `ZeitgeistReadOnly` + `claude-seed-policy`. Region: `us-east-1`. When permission denied: tell user the exact action/resource — they add it manually in console.
+IAM user `claude-readonly` with `CommunityPlatformReadOnly` + `claude-seed-policy`. Region: `us-east-1`. When permission denied: tell user the exact action/resource — they add it manually in console.
 
 ## Do Not
 

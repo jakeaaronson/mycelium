@@ -1,4 +1,4 @@
-# Playbook: Testing (Zeitgeist)
+# Playbook: Testing (Community Platform)
 
 ## Unit Tests
 
@@ -20,7 +20,7 @@ Script exercises full email flow with settings changes. Located in `scripts/`.
 
 ## Regression Tests
 
-AI-generated reports using himalaya CLI for email send/receive verification. Gmail test account credentials at `~/inkmans_brain`.
+AI-generated reports using himalaya CLI for email send/receive verification. Gmail test account credentials stored separately.
 
 ## Visual Testing (Ralph Wiggum Technique)
 

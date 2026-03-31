@@ -1,13 +1,5 @@
-# Generated
-proposals/
-snapshots/
+# Never tracked anywhere (generated, temporary, caches)
 *.pyc
 __pycache__/
-
-# Personal data (sanitize before sharing)
-backup-*/
-docs/research/
-
-# Claude Code artifacts
-session-history.jsonl
 *.log
+snapshots/*
